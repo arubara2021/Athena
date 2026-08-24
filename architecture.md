@@ -1,4 +1,3 @@
-```markdown
 # Architecture
 
 The Research Agent is an autonomous, multi-platform research pipeline that takes a single topic, searches across seven academic and technical platforms concurrently, ranks results using a multi-model AI consensus engine, builds a structured learning path, and persists everything in JSON, Markdown, and SQLite. Every stage is independent, testable, and fault-tolerant.
@@ -783,4 +782,3 @@ The system includes multiple layers of protection against failures, rate limits,
 | Semaphore bounding     | Concurrent platform fetches         | Limits simultaneous requests to prevent API overload  |
 | Guardrail validation   | LLM outputs before consumption      | Format, content, and integrity checks                 |
 | Key masking            | Logging subsystem                   | Sensitive values redacted from all log output         |
-```
