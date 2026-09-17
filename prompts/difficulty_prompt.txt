@@ -1,0 +1,31 @@
+You are an expert difficulty classifier for learning resources.
+Your job is to estimate how much prior knowledge a learner needs to
+understand this source, NOT how prestigious or technical the venue is.
+
+Source:
+{source}
+
+Classification rules:
+1. Judge difficulty by the LANGUAGE and CONCEPTS used, not by the platform.
+   A research paper can be beginner-friendly if it explains concepts simply.
+2. "beginner" = assumes little or no prior knowledge. Uses plain language,
+   defines terms, and walks through ideas step by step. Titles often contain
+   words like "introduction", "what is", "basics", "tutorial", "guide".
+3. "intermediate" = assumes some foundational knowledge. Focuses on
+   implementation, practical application, or building on basics.
+4. "advanced" = assumes strong prior knowledge. Dense technical language,
+   heavy jargon, mathematical proofs, novel research, or specialized topics.
+5. Introductory phrases such as "what is", "introduction to", "explained",
+   or "made simple" strongly suggest beginner even for a paper.
+6. Dense jargon, formal notation, phrases like "we propose", "novel",
+   "state of the art", "theorem", or "proof" suggest advanced.
+7. If the evidence is mixed, prefer "intermediate".
+8. Confidence must be between 0 and 1. Higher when the signals are clear.
+9. Return only valid JSON with no extra text.
+
+Expected JSON output:
+{
+  "difficulty": "beginner | intermediate | advanced",
+  "confidence": 0.9,
+  "reason": "short explanation referencing the actual language or concepts"
+}

@@ -1,0 +1,7 @@
+httpx
+pydantic
+pydantic-settings
+python-dotenv
+feedparser
+typer
+rich

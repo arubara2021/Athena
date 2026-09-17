@@ -1,0 +1,311 @@
+scorer:
+  weights:
+    relevance: 0.42
+    authority: 0.12
+    type_quality: 0.10
+    impact: 0.10
+    recency: 0.08
+    content: 0.08
+    support: 0.05
+    authors: 0.05
+
+classifier:
+  keyword_weights:
+    beginner: 0.9
+    intermediate: 0.6
+    advanced: 0.7
+  content:
+    weight_paper: 2.6
+    weight_other: 1.1
+    beginner_max_complexity: 0.35
+    intermediate_max_complexity: 0.62
+    fog_min: 6.0
+    fog_max: 18.0
+    fog_weight: 0.6
+    jargon_weight: 0.4
+    jargon_density_cap: 0.05
+    complex_word_syllables: 3
+  intro_phrasing:
+    beginner_weight: 1.1
+    intermediate_weight: 0.3
+    max_points: 3
+
+confidence:
+  base: 0.40
+  margin_factor: 0.40
+  max: 0.95
+  source_type_bonus:
+    documentation:  { beginner: 1.2, intermediate: 0.4 }
+    course:         { beginner: 1.6, intermediate: 0.3 }
+    video:          { beginner: 1.0, intermediate: 0.4 }
+    blog:           { beginner: 0.8, intermediate: 0.4 }
+    repository:     { beginner: 0.0, intermediate: 1.4 }
+    model:          { beginner: 0.0, intermediate: 1.0 }
+    dataset:        { beginner: 0.0, intermediate: 0.8 }
+    research_paper: { beginner: 0.0, intermediate: 0.2 }
+  platform_bonus:
+    wikipedia:    { beginner: 0.5, intermediate: 0.4 }
+    github:       { beginner: 0.0, intermediate: 0.8 }
+    huggingface:  { beginner: 0.0, intermediate: 0.5 }
+
+alignment:
+  cap: 0.50
+  beginner_request:
+    difficulty:
+      beginner: 0.30
+      intermediate: 0.05
+      advanced: -0.40
+    source_type:
+      documentation: 0.25
+      course: 0.25
+      video: 0.20
+      blog: 0.10
+      repository: 0.10
+      research_paper: -0.15
+  advanced_request:
+    difficulty:
+      advanced: 0.12
+      intermediate: 0.03
+      beginner: -0.10
+    source_type:
+      research_paper: 0.05
+
+consensus:
+  max_models: 3
+  max_llm_sources: 20
+  judge_max_attempts: 2
+  min_votes_for_judge: 2
+  min_relevance_score: 0.20
+  min_llm_score: 0.05
+
+learning_path:
+  floor_min: 0.30
+  floor_scale: 0.45
+  fallback_min: 0.20
+  fallback_scale: 0.60
+  core_min: 0.25
+  core_scale: 0.75
+  advanced_min: 0.20
+  deepen_min: 0.15
+  deepen_scale: 0.40
+
+tokenization:
+  generic_terms:
+    - about
+    - basics
+    - basic
+    - beginner
+    - best
+    - blog
+    - book
+    - brief
+    - can
+    - clear
+    - complete
+    - concept
+    - concepts
+    - course
+    - courses
+    - deep
+    - detail
+    - detailed
+    - details
+    - different
+    - documentation
+    - easy
+    - example
+    - examples
+    - explain
+    - explained
+    - explanation
+    - find
+    - first
+    - free
+    - from
+    - full
+    - general
+    - get
+    - good
+    - great
+    - guide
+    - guides
+    - help
+    - high
+    - how
+    - idea
+    - ideas
+    - include
+    - includes
+    - including
+    - info
+    - information
+    - intro
+    - introduction
+    - just
+    - know
+    - knowledge
+    - large
+    - latest
+    - learn
+    - learning
+    - level
+    - levels
+    - like
+    - list
+    - look
+    - looking
+    - low
+    - main
+    - many
+    - mean
+    - meaning
+    - more
+    - most
+    - much
+    - need
+    - needed
+    - needs
+    - new
+    - online
+    - only
+    - open
+    - other
+    - others
+    - outline
+    - overview
+    - part
+    - parts
+    - people
+    - place
+    - please
+    - possible
+    - practical
+    - practice
+    - provide
+    - provides
+    - quick
+    - quickly
+    - recent
+    - related
+    - same
+    - search
+    - see
+    - several
+    - show
+    - shows
+    - simple
+    - simply
+    - small
+    - some
+    - something
+    - source
+    - sources
+    - start
+    - started
+    - starting
+    - step
+    - steps
+    - stuff
+    - such
+    - teach
+    - teaches
+    - tell
+    - that
+    - the
+    - their
+    - them
+    - then
+    - there
+    - these
+    - they
+    - thing
+    - things
+    - think
+    - this
+    - those
+    - through
+    - time
+    - times
+    - tips
+    - too
+    - top
+    - topic
+    - topics
+    - trick
+    - tricks
+    - try
+    - tutorial
+    - tutorials
+    - two
+    - type
+    - types
+    - understand
+    - understanding
+    - use
+    - used
+    - useful
+    - uses
+    - using
+    - various
+    - very
+    - video
+    - videos
+    - want
+    - wanted
+    - wants
+    - was
+    - watch
+    - way
+    - ways
+    - well
+    - were
+    - what
+    - when
+    - where
+    - which
+    - while
+    - who
+    - why
+    - will
+    - with
+    - within
+    - without
+    - word
+    - words
+    - work
+    - works
+    - working
+    - world
+    - would
+    - write
+    - year
+    - years
+    - you
+    - your
+    - youtube
+    - and
+    - but
+    - nor
+    - not
+    - its
+    - had
+    - has
+    - have
+    - been
+    - being
+    - may
+    - might
+    - must
+    - shall
+    - could
+    - should
+    - would
+    - into
+    - onto
+    - upon
+    - per
+    - via
+    - also
+    - than
+    - yet
+    - so

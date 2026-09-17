@@ -1,0 +1,80 @@
+platforms:
+  arxiv:
+    enabled: true
+    max_results_per_query: 10
+    timeout_seconds: 30
+    rate_limit_per_minute: 5
+
+  semantic_scholar:
+    enabled: false  # Disabled: Returning 403 Forbidden (no valid API key)
+    max_results_per_query: 10
+    timeout_seconds: 30
+
+  openalex:
+    enabled: true
+    max_results_per_query: 10
+    timeout_seconds: 30
+    rate_limit_per_minute: 20
+
+  github:
+    enabled: true
+    max_results_per_query: 8
+    timeout_seconds: 30
+    rate_limit_per_minute: 10
+
+  wikipedia:
+    enabled: true
+    max_results_per_query: 8
+    timeout_seconds: 30
+    rate_limit_per_minute: 8
+
+  huggingface:
+    enabled: true
+    max_results_per_query: 8
+    timeout_seconds: 30
+    rate_limit_per_minute: 20
+
+  web:
+    enabled: false  # Disabled: Relying on dedicated search APIs instead
+    max_results_per_query: 8
+    timeout_seconds: 30
+
+  tavily:
+    enabled: false  # Disabled: API key returned 401 Unauthorized
+    max_results_per_query: 8
+    timeout_seconds: 15
+
+  exa:
+    enabled: true
+    max_results_per_query: 8
+    timeout_seconds: 30
+    rate_limit_per_minute: 10
+
+  core:
+    enabled: true
+    max_results_per_query: 10
+    timeout_seconds: 30
+    rate_limit_per_minute: 10
+
+  serper:
+    enabled: true
+    max_results_per_query: 8
+    timeout_seconds: 30
+    rate_limit_per_minute: 10
+
+  serpapi:
+    enabled: false  # Disabled: Timed out in API checker
+    max_results_per_query: 8
+    timeout_seconds: 15
+
+  jina:
+    enabled: false  # Disabled: Timed out in API checker
+    max_results_per_query: 5
+    timeout_seconds: 15
+
+fetch:
+  concurrency: 6
+  max_query_variants: 5
+  request_timeout_seconds: 30  # Reduced from 45 to fail fast on bad platforms
+  max_retries: 2
+  retry_backoff_seconds: 1

@@ -1,0 +1,1237 @@
+====================================================================================================
+                    RESEARCH AGENT — AUTONOMOUS AI UPGRADE PLAN
+                    Version: 2.0 | Status: PLANNED
+                    Author: Arun | Date: 2026-09-02
+====================================================================================================
+
+TABLE OF CONTENTS
+=================
+1. Current State vs Target State
+2. Architecture Overview Diagram
+3. Phase 1: Token Control System
+4. Phase 2: Agentic Loop Engine
+5. Phase 3: Tool System
+6. Phase 4: Memory System
+7. Phase 5: Reflection Engine
+8. Phase 6: Planner Module
+9. New File Structure
+10. Implementation Order
+11. Token Budget Per Run
+12. Free-Tier Compatibility
+
+====================================================================================================
+SECTION 1: CURRENT STATE vs TARGET STATE
+====================================================================================================
+
+CURRENT STATE (Pipeline Agent):
+--------------------------------
+- Linear pipeline: Input -> Process -> Output
+- Fixed stages executed in order
+- No self-correction
+- No dynamic planning
+- No memory between runs
+- No tool discovery
+- One pass, no iteration
+
+TARGET STATE (Autonomous Agent):
+--------------------------------
+- Dynamic loop: Plan -> Act -> Observe -> Reflect -> Repeat
+- Agent decides what to do next
+- Self-corrects when results are poor
+- Dynamically plans based on goal
+- Remembers past research
+- Discovers and uses tools
+- Multiple passes until goal is satisfied
+
+COMPARISON TABLE:
++---------------------------+-------------------+-------------------+
+| Feature                   | Current (v1.0)    | Target (v2.0)     |
++---------------------------+-------------------+-------------------+
+| Execution Model           | Linear Pipeline   | Agentic Loop      |
+| Planning                  | Hardcoded Steps   | Dynamic Planning  |
+| Error Recovery            | Fallback Only     | Self-Correction   |
+| Memory                    | None              | Persistent        |
+| Tool Use                  | Fixed 7 Clients   | Dynamic Tools     |
+| Iteration                 | Single Pass       | Multi-Pass        |
+| Token Awareness           | None              | Budget Tracking   |
+| Goal Decomposition        | None              | Automatic         |
+| Quality Assessment        | None              | Self-Evaluation   |
++---------------------------+-------------------+-------------------+
+
+====================================================================================================
+SECTION 2: ARCHITECTURE OVERVIEW DIAGRAM
+====================================================================================================
+
+CURRENT ARCHITECTURE (v1.0):
+============================
+
+    [ User Input: Topic ]
+            |
+            v
+    +------------------+
+    | QUERY EXPANSION  |
+    +------------------+
+            |
+            v
+    +------------------+
+    | SOURCE FETCHING  |  --> 7 platforms concurrently
+    +------------------+
+            |
+            v
+    +------------------+
+    | NORMALIZE/DEDUPE |
+    +------------------+
+            |
+            v
+    +------------------+
+    | VALIDATION       |
+    +------------------+
+            |
+            v
+    +------------------+
+    | RANKING          |  --> Heuristic + AI Consensus
+    +------------------+
+            |
+            v
+    +------------------+
+    | LEARNING PATH    |
+    +------------------+
+            |
+            v
+    +------------------+
+    | SAVE & DISPLAY   |
+    +------------------+
+            |
+            v
+    [ Final Report ]
+
+
+TARGET ARCHITECTURE (v2.0):
+===========================
+
+    [ User Input: Goal ]
+            |
+            v
+    +================================================+
+    |              AGENTIC CONTROLLER                 |
+    |                                                |
+    |  +------------------------------------------+  |
+    |  |          TOKEN BUDGET MANAGER            |  |
+    |  |  Total Budget: 40,000 tokens             |  |
+    |  |  Spent: 12,450 | Remaining: 27,550       |  |
+    |  +------------------------------------------+  |
+    |                                                |
+    |  +------------------------------------------+  |
+    |  |              PLANNER                      |  |
+    |  |  Goal -> Sub-tasks -> Priority Order     |  |
+    |  +------------------------------------------+  |
+    |                                                |
+    |  +------------------------------------------+  |
+    |  |           AGENTIC LOOP                    |  |
+    |  |                                          |  |
+    |  |   +--------+    +--------+    +------+  |  |
+    |  |   | THINK  |--->|  ACT   |--->|OBSERVE|  |  |
+    |  |   +--------+    +--------+    +------+  |  |
+    |  |       ^                            |     |  |
+    |  |       |                            v     |  |
+    |  |       +--------+ REFLECT <--------+     |  |
+    |  |                                          |  |
+    |  |   Loop until: Goal Met OR Budget Empty   |  |
+    |  +------------------------------------------+  |
+    |                                                |
+    |  +------------------------------------------+  |
+    |  |           TOOL REGISTRY                   |  |
+    |  |  [Search] [Read] [Write] [Execute]       |  |
+    |  |  [Browse] [Summarize] [Compare]          |  |
+    |  +------------------------------------------+  |
+    |                                                |
+    |  +------------------------------------------+  |
+    |  |           MEMORY SYSTEM                   |  |
+    |  |  [Short-term] [Long-term] [Episodic]     |  |
+    |  +------------------------------------------+  |
+    |                                                |
+    +================================================+
+            |
+            v
+    [ Final Output: Report + Learning Path + Insights ]
+
+
+DETAILED AGENTIC LOOP DIAGRAM:
+==============================
+
+                    +-------------------+
+                    |   RECEIVE GOAL    |
+                    +-------------------+
+                            |
+                            v
+                    +-------------------+
+                    |  DECOMPOSE GOAL   |
+                    |  into sub-tasks   |
+                    +-------------------+
+                            |
+                            v
+              +=============================+
+              |                             |
+              |    AGENTIC LOOP START       |
+              |                             |
+              |  +---------------------+    |
+              |  | CHECK TOKEN BUDGET  |    |
+              |  | Budget < 5000?      |    |
+              |  +---------------------+    |
+              |     |YES          |NO       |
+              |     v             v         |
+              |  +------+   +---------+    |
+              |  |WRAP  |   |  THINK  |    |
+              |  |UP    |   | What to |    |
+              |  |MODE  |   | do next?|    |
+              |  +------+   +---------+    |
+              |     |             |         |
+              |     |             v         |
+              |     |   +----------------+  |
+              |     |   | SELECT TOOL    |  |
+              |     |   | for this task  |  |
+              |     |   +----------------+  |
+              |     |             |         |
+              |     |             v         |
+              |     |   +----------------+  |
+              |     |   | EXECUTE TOOL   |  |
+              |     |   | (ACT)          |  |
+              |     |   +----------------+  |
+              |     |             |         |
+              |     |             v         |
+              |     |   +----------------+  |
+              |     |   | OBSERVE        |  |
+              |     |   | Collect result |  |
+              |     |   +----------------+  |
+              |     |             |         |
+              |     |             v         |
+              |     |   +----------------+  |
+              |     |   | REFLECT        |  |
+              |     |   | Is result good?|  |
+              |     |   +----------------+  |
+              |     |     |YES     |NO      |
+              |     |     v        v        |
+              |     |  +------+ +-------+  |
+              |     |  |NEXT  | |RETRY  |  |
+              |     |  |TASK  | |with   |  |
+              |     |  |      | |new    |  |
+              |     |  |      | |approach| |
+              |     |  +------+ +-------+  |
+              |     |     |        |        |
+              |     |     +----+---+        |
+              |     |          |            |
+              |     |          v            |
+              |     |   +----------------+  |
+              |     |   | ALL SUB-TASKS  |  |
+              |     |   | COMPLETE?      |  |
+              |     |   +----------------+  |
+              |     |     |YES     |NO      |
+              |     |     v        |        |
+              |     |  +------+    |        |
+              |     |  | EXIT |    |        |
+              |     |  | LOOP |    |        |
+              |     |  +------+    |        |
+              |     |     |        |        |
+              |     +-----+--------+        |
+              |           |                 |
+              +===========+=================+
+                          |
+                          v
+              +=============================+
+              |   SYNTHESIZE FINAL OUTPUT   |
+              +=============================+
+                          |
+                          v
+              [ Report + Learning Path ]
+
+====================================================================================================
+SECTION 3: PHASE 1 — TOKEN CONTROL SYSTEM
+====================================================================================================
+
+PURPOSE:
+--------
+Control and track token usage across all LLM calls to ensure the agent
+stays within free-tier limits. This is the FOUNDATION of the autonomous
+upgrade. Without this, the agent will burn through free tokens in minutes.
+
+ARCHITECTURE DIAGRAM:
+=====================
+
+    +================================================+
+    |            TOKEN BUDGET MANAGER                 |
+    |================================================|
+    |                                                |
+    |  +------------------------------------------+  |
+    |  |         BUDGET CONFIGURATION              |  |
+    |  |                                          |  |
+    |  |  Total Budget Per Task:  40,000 tokens   |  |
+    |  |  Warning Threshold:      30,000 tokens   |  |
+    |  |  Critical Threshold:      5,000 tokens   |  |
+    |  |  Wrap-Up Threshold:       3,000 tokens   |  |
+    |  +------------------------------------------+  |
+    |                                                |
+    |  +------------------------------------------+  |
+    |  |         TOKEN LEDGER                      |  |
+    |  |                                          |  |
+    |  |  Task ID: abc-123                        |  |
+    |  |  Started: 2026-09-02 16:00:00           |  |
+    |  |                                          |  |
+    |  |  Category          | Spent   | Limit     |  |
+    |  |  ------------------+---------+---------  |  |
+    |  |  Planning          | 2,000   | 5,000    |  |
+    |  |  Search Queries    | 1,500   | 3,000    |  |
+    |  |  Source Reading    | 8,000   | 15,000   |  |
+    |  |  Ranking           | 6,000   | 8,000    |  |
+    |  |  Summarization     | 4,500   | 6,000    |  |
+    |  |  Reflection        | 1,200   | 3,000    |  |
+    |  |  ------------------+---------+---------  |  |
+    |  |  TOTAL             | 23,200  | 40,000   |  |
+    |  +------------------------------------------+  |
+    |                                                |
+    |  +------------------------------------------+  |
+    |  |         COST TRACKER                      |  |
+    |  |                                          |  |
+    |  |  Tracks tokens per LLM call              |  |
+    |  |  Deducts from budget automatically       |  |
+    |  |  Raises BudgetWarning at threshold       |  |
+    |  |  Forces WrapUpMode when critical         |  |
+    |  +------------------------------------------+  |
+    |                                                |
+    +================================================+
+
+
+MODEL TIER SELECTION (Token-Efficient):
+=======================================
+
+    +----------------------------------------------------------+
+    | DECISION: Which model to use for which task?             |
+    +----------------------------------------------------------+
+    |                                                          |
+    |  TASK TYPE          | MODEL TIER    | TOKEN COST        |
+    |  -------------------+---------------+------------------ |
+    |  Simple decisions   | FAST (cheap)  | ~100-500 tokens   |
+    |  Query expansion    | FAST          | ~200-500 tokens   |
+    |  Summarization      | FAST          | ~300-800 tokens   |
+    |  Tool selection     | FAST          | ~100-300 tokens   |
+    |  Reflection         | FAST          | ~200-500 tokens   |
+    |  Deep analysis      | STRONG        | ~1000-3000 tokens |
+    |  Final ranking      | STRONG        | ~2000-5000 tokens |
+    |  Learning path      | STRONG        | ~1500-3000 tokens |
+    |  Final synthesis    | STRONG        | ~2000-4000 tokens |
+    |                                                          |
+    +----------------------------------------------------------+
+
+    RULE: Use FAST model for 80% of calls, STRONG for 20%
+    This keeps token usage LOW while maintaining quality
+
+
+NEW FILES TO CREATE:
+====================
+    agent/token_budget.py       - Budget configuration and tracking
+    agent/token_ledger.py       - Per-call token recording
+    agent/cost_tracker.py       - Aggregation and reporting
+
+====================================================================================================
+SECTION 4: PHASE 2 — AGENTIC LOOP ENGINE
+====================================================================================================
+
+PURPOSE:
+--------
+Replace the linear pipeline with a dynamic loop that allows the agent
+to think, act, observe, and reflect until the goal is satisfied.
+
+ARCHITECTURE DIAGRAM:
+=====================
+
+    +================================================+
+    |           AGENTIC LOOP ENGINE                   |
+    |================================================|
+    |                                                |
+    |  INPUT: Goal + Context + Budget                |
+    |                                                |
+    |  +------------------------------------------+  |
+    |  |  LOOP STATE                               |  |
+    |  |                                          |  |
+    |  |  current_step: 3                         |  |
+    |  |  max_steps: 15                           |  |
+    |  |  status: RUNNING                         |  |
+    |  |  sub_tasks: [                            |  |
+    |  |    {task: "Search basics", done: true},  |  |
+    |  |    {task: "Read papers", done: true},    |  |
+    |  |    {task: "Build path", done: false},    |  |
+    |  |  ]                                       |  |
+    |  +------------------------------------------+  |
+    |                                                |
+    |  LOOP ITERATION:                               |
+    |                                                |
+    |  1. THINK                                      |
+    |     - What is the next best action?            |
+    |     - What tool should I use?                  |
+    |     - What information do I need?              |
+    |     - Use FAST model (~200 tokens)             |
+    |                                                |
+    |  2. ACT                                        |
+    |     - Execute the selected tool                |
+    |     - Collect the output                       |
+    |     - Track tokens used                        |
+    |                                                |
+    |  3. OBSERVE                                    |
+    |     - Parse the tool output                    |
+    |     - Extract relevant information             |
+    |     - Update internal state                    |
+    |                                                |
+    |  4. REFLECT                                    |
+    |     - Is the result good enough?               |
+    |     - Should I retry with different approach?  |
+    |     - Should I move to next sub-task?          |
+    |     - Use FAST model (~300 tokens)             |
+    |                                                |
+    |  EXIT CONDITIONS:                              |
+    |     - All sub-tasks complete                   |
+    |     - Token budget exhausted                   |
+    |     - Max iterations reached                   |
+    |     - Quality threshold met                    |
+    |                                                |
+    +================================================+
+
+
+STATE MACHINE DIAGRAM:
+======================
+
+    +----------+     +----------+     +----------+
+    |  IDLE    |---->| PLANNING |---->| RUNNING  |
+    +----------+     +----------+     +----------+
+                                          |    ^
+                                          |    |
+                                          v    |
+    +----------+     +----------+     +----------+
+    | COMPLETE |<----| WRAP_UP  |<----| REFLECT  |
+    +----------+     +----------+     +----------+
+                                          |
+                                          |
+                                          v
+                                     +----------+
+                                     | RETRY    |
+                                     +----------+
+                                          |
+                                          |
+                                          v
+                                     +----------+
+                                     | RUNNING  |
+                                     +----------+
+
+
+NEW FILES TO CREATE:
+====================
+    agent/loop_engine.py        - Main agentic loop
+    agent/loop_state.py         - Loop state management
+    agent/think_step.py         - Think phase logic
+    agent/act_step.py           - Act phase logic
+    agent/observe_step.py       - Observe phase logic
+    agent/reflect_step.py       - Reflect phase logic
+
+====================================================================================================
+SECTION 5: PHASE 3 — TOOL SYSTEM
+====================================================================================================
+
+PURPOSE:
+--------
+Create a dynamic tool registry that the agent can query to find
+the right tool for each task. Tools are discovered at runtime.
+
+ARCHITECTURE DIAGRAM:
+=====================
+
+    +================================================+
+    |            TOOL REGISTRY                        |
+    |================================================|
+    |                                                |
+    |  +------------------------------------------+  |
+    |  |  TOOL CATEGORIES                          |  |
+    |  |                                          |  |
+    |  |  SEARCH TOOLS:                           |  |
+    |  |    - arxiv_search                        |  |
+    |  |    - openalex_search                     |  |
+    |  |    - wikipedia_search                    |  |
+    |  |    - github_search                       |  |
+    |  |    - huggingface_search                  |  |
+    |  |    - tavily_web_search                   |  |
+    |  |    - exa_semantic_search                 |  |
+    |  |    - serper_google_search                |  |
+    |  |                                          |  |
+    |  |  READING TOOLS:                          |  |
+    |  |    - read_url (Jina)                     |  |
+    |  |    - read_pdf                            |  |
+    |  |    - extract_abstract                    |  |
+    |  |                                          |  |
+    |  |  ANALYSIS TOOLS:                         |  |
+    |  |    - rank_sources                        |  |
+    |  |    - classify_difficulty                 |  |
+    |  |    - summarize_source                    |  |
+    |  |    - compare_sources                     |  |
+    |  |                                          |  |
+    |  |  GENERATION TOOLS:                       |  |
+    |  |    - build_learning_path                 |  |
+    |  |    - generate_summary                    |  |
+    |  |    - create_report                       |  |
+    |  |                                          |  |
+    |  |  MEMORY TOOLS:                           |  |
+    |  |    - save_to_memory                      |  |
+    |  |    - recall_from_memory                  |  |
+    |  |    - search_memory                       |  |
+    |  |                                          |  |
+    |  +------------------------------------------+  |
+    |                                                |
+    |  TOOL SELECTION LOGIC:                         |
+    |                                                |
+    |  Agent THINK step outputs:                     |
+    |    {                                           |
+    |      "action": "search",                       |
+    |      "tool": "tavily_web_search",              |
+    |      "parameters": {                           |
+    |        "query": "perceptron basics",           |
+    |        "max_results": 5                        |
+    |      }                                         |
+    |    }                                           |
+    |                                                |
+    |  Tool Registry executes and returns result     |
+    |                                                |
+    +================================================+
+
+
+TOOL EXECUTION FLOW:
+====================
+
+    [ Agent THINK ]
+         |
+         v
+    +------------------+
+    | SELECT TOOL      |
+    | from registry    |
+    +------------------+
+         |
+         v
+    +------------------+
+    | VALIDATE PARAMS  |
+    +------------------+
+         |
+         v
+    +------------------+
+    | CHECK BUDGET     |
+    | Enough tokens?   |
+    +------------------+
+         |YES        |NO
+         v           v
+    +---------+  +----------+
+    | EXECUTE |  | SKIP/    |
+    | TOOL    |  | FALLBACK |
+    +---------+  +----------+
+         |
+         v
+    +------------------+
+    | RETURN RESULT    |
+    | to agent         |
+    +------------------+
+
+
+NEW FILES TO CREATE:
+====================
+    agent/tool_registry.py      - Tool registration and discovery
+    agent/tool_executor.py      - Tool execution with budget check
+    agent/tools/search_tools.py - All search tool implementations
+    agent/tools/read_tools.py   - Reading and extraction tools
+    agent/tools/analysis_tools.py - Analysis and ranking tools
+    agent/tools/generation_tools.py - Report generation tools
+    agent/tools/memory_tools.py - Memory read/write tools
+
+====================================================================================================
+SECTION 6: PHASE 4 — MEMORY SYSTEM
+====================================================================================================
+
+PURPOSE:
+--------
+Give the agent persistent memory so it remembers past research,
+avoids repeating work, and builds knowledge over time.
+
+ARCHITECTURE DIAGRAM:
+=====================
+
+    +================================================+
+    |            MEMORY SYSTEM                        |
+    |================================================|
+    |                                                |
+    |  +------------------------------------------+  |
+    |  |  SHORT-TERM MEMORY (Current Task)         |  |
+    |  |                                          |  |
+    |  |  - Current goal                          |  |
+    |  |  - Sub-tasks and their status            |  |
+    |  |  - Sources found so far                  |  |
+    |  |  - Intermediate results                  |  |
+    |  |  - Reflection notes                      |  |
+    |  |                                          |  |
+    |  |  Storage: In-memory dict                 |  |
+    |  |  Lifetime: Current task only             |  |
+    |  +------------------------------------------+  |
+    |                                                |
+    |  +------------------------------------------+  |
+    |  |  LONG-TERM MEMORY (Persistent)            |  |
+    |  |                                          |  |
+    |  |  - All past research topics              |  |
+    |  |  - Source database                       |  |
+    |  |  - Learning paths created                |  |
+    |  |  - User preferences learned              |  |
+    |  |  - Successful strategies                 |  |
+    |  |                                          |  |
+    |  |  Storage: SQLite database                |  |
+    |  |  Lifetime: Permanent                     |  |
+    |  +------------------------------------------+  |
+    |                                                |
+    |  +------------------------------------------+  |
+    |  |  EPISODIC MEMORY (Past Runs)              |  |
+    |  |                                          |  |
+    |  |  - What worked in past runs              |  |
+    |  |  - What failed and why                   |  |
+    |  |  - Token usage patterns                  |  |
+    |  |  - Quality scores achieved               |  |
+    |  |                                          |  |
+    |  |  Storage: SQLite + JSON files            |  |
+    |  |  Lifetime: Permanent                     |  |
+    |  +------------------------------------------+  |
+    |                                                |
+    |  MEMORY FLOW:                                  |
+    |                                                |
+    |  New Task --> Check Long-Term Memory           |
+    |              |                                 |
+    |              v                                 |
+    |         Already researched?                    |
+    |         |YES         |NO                       |
+    |         v            v                         |
+    |    Use cached    Start fresh                   |
+    |    results       research                      |
+    |                                                |
+    +================================================+
+
+
+MEMORY USAGE IN AGENTIC LOOP:
+=============================
+
+    [ Loop Start ]
+         |
+         v
+    +------------------+
+    | RECALL MEMORY    |
+    | Have I seen this |
+    | topic before?    |
+    +------------------+
+         |
+         v
+    [ If yes: Use past results, skip redundant searches ]
+    [ If no: Proceed with full research ]
+         |
+         v
+    [ During loop: Save findings to short-term memory ]
+         |
+         v
+    [ Loop End: Transfer short-term to long-term memory ]
+
+
+NEW FILES TO CREATE:
+====================
+    agent/memory/short_term.py   - In-memory task context
+    agent/memory/long_term.py    - SQLite persistent storage
+    agent/memory/episodic.py     - Past run history
+    agent/memory/retrieval.py    - Memory search and recall
+
+====================================================================================================
+SECTION 7: PHASE 5 — REFLECTION ENGINE
+====================================================================================================
+
+PURPOSE:
+--------
+Allow the agent to evaluate its own output quality and decide
+whether to retry, adjust, or move forward.
+
+ARCHITECTURE DIAGRAM:
+=====================
+
+    +================================================+
+    |          REFLECTION ENGINE                      |
+    |================================================|
+    |                                                |
+    |  INPUT: Current result + Original goal         |
+    |                                                |
+    |  REFLECTION QUESTIONS:                         |
+    |                                                |
+    |  1. Does this result answer the goal?          |
+    |     Score: 0.0 to 1.0                         |
+    |                                                |
+    |  2. Are the sources relevant?                  |
+    |     Score: 0.0 to 1.0                         |
+    |                                                |
+    |  3. Is the difficulty level correct?           |
+    |     Score: 0.0 to 1.0                         |
+    |                                                |
+    |  4. Is the learning path logical?              |
+    |     Score: 0.0 to 1.0                         |
+    |                                                |
+    |  5. Are there gaps in coverage?                |
+    |     Score: 0.0 to 1.0                         |
+    |                                                |
+    |  DECISION MATRIX:                              |
+    |                                                |
+    |  +------------------------------------------+  |
+    |  | Overall Score    | Action                |  |
+    |  |------------------+---------------------- |  |
+    |  | 0.8 - 1.0       | ACCEPT and move on    |  |
+    |  | 0.6 - 0.8       | MINOR adjustments     |  |
+    |  | 0.4 - 0.6       | RETRY with new query  |  |
+    |  | 0.0 - 0.4       | COMPLETE REDO         |  |
+    |  +------------------------------------------+  |
+    |                                                |
+    |  TOKEN COST: ~300 tokens per reflection        |
+    |  MODEL: FAST model (cheap)                     |
+    |                                                |
+    +================================================+
+
+
+REFLECTION FLOW:
+================
+
+    [ Tool Result ]
+         |
+         v
+    +------------------+
+    | EVALUATE QUALITY |
+    | (FAST model)     |
+    +------------------+
+         |
+         v
+    +------------------+
+    | SCORE >= 0.8?    |
+    +------------------+
+    |YES            |NO
+    v               v
+    +---------+  +------------------+
+    | ACCEPT  |  | IDENTIFY ISSUE   |
+    | result  |  | What went wrong? |
+    +---------+  +------------------+
+                      |
+                      v
+                 +------------------+
+                 | GENERATE FIX     |
+                 | New approach     |
+                 +------------------+
+                      |
+                      v
+                 +------------------+
+                 | RETRY ACTION     |
+                 | with fix         |
+                 +------------------+
+
+
+NEW FILES TO CREATE:
+====================
+    agent/reflection/engine.py     - Main reflection logic
+    agent/reflection/evaluator.py  - Quality scoring
+    agent/reflection/decider.py    - Action decision
+
+====================================================================================================
+SECTION 8: PHASE 6 — PLANNER MODULE
+====================================================================================================
+
+PURPOSE:
+--------
+Decompose the user's goal into sub-tasks and create an execution
+plan that the agentic loop follows.
+
+ARCHITECTURE DIAGRAM:
+=====================
+
+    +================================================+
+    |            PLANNER MODULE                       |
+    |================================================|
+    |                                                |
+    |  INPUT: User Goal                              |
+    |  Example: "Learn about perceptrons from        |
+    |            basics to advanced"                 |
+    |                                                |
+    |  PLANNING PROCESS:                             |
+    |                                                |
+    |  Step 1: UNDERSTAND GOAL                       |
+    |    - What does the user want?                  |
+    |    - What level? (beginner/advanced)           |
+    |    - What format? (learning path/report)       |
+    |                                                |
+    |  Step 2: DECOMPOSE                             |
+    |    - Break into sub-tasks                      |
+    |    - Order by dependency                       |
+    |    - Estimate token cost per sub-task          |
+    |                                                |
+    |  Step 3: ALLOCATE BUDGET                       |
+    |    - Distribute token budget                   |
+    |    - Prioritize critical sub-tasks             |
+    |    - Reserve budget for reflection             |
+    |                                                |
+    |  OUTPUT: Execution Plan                        |
+    |                                                |
+    |  Example Plan:                                 |
+    |  +------------------------------------------+  |
+    |  | Sub-task 1: Search basics     | 5000 tk |  |
+    |  | Sub-task 2: Read top sources  | 8000 tk |  |
+    |  | Sub-task 3: Rank sources      | 6000 tk |  |
+    |  | Sub-task 4: Build path        | 5000 tk |  |
+    |  | Sub-task 5: Summarize         | 4000 tk |  |
+    |  | Sub-task 6: Reflect & fix     | 3000 tk |  |
+    |  | Reserve: Final synthesis      | 5000 tk |  |
+    |  | ---------------------------------------- |  |
+    |  | TOTAL                         | 36000 tk|  |
+    |  +------------------------------------------+  |
+    |                                                |
+    +================================================+
+
+
+PLANNING FLOW:
+==============
+
+    [ User Goal ]
+         |
+         v
+    +------------------+
+    | ANALYZE GOAL     |
+    | What type?       |
+    +------------------+
+         |
+         v
+    +------------------+
+    | SELECT TEMPLATE  |
+    | research/learn/  |
+    | implement/compare|
+    +------------------+
+         |
+         v
+    +------------------+
+    | GENERATE         |
+    | SUB-TASKS        |
+    +------------------+
+         |
+         v
+    +------------------+
+    | ALLOCATE BUDGET  |
+    | per sub-task     |
+    +------------------+
+         |
+         v
+    +------------------+
+    | RETURN PLAN      |
+    | to loop engine   |
+    +------------------+
+
+
+NEW FILES TO CREATE:
+====================
+    agent/planner/planner.py       - Main planning logic
+    agent/planner/decomposer.py    - Goal decomposition
+    agent/planner/budget_alloc.py  - Budget distribution
+    agent/planner/templates.py     - Plan templates per goal type
+
+====================================================================================================
+SECTION 9: NEW FILE STRUCTURE
+====================================================================================================
+
+CURRENT PROJECT STRUCTURE (v1.0):
+==================================
+
+    research_agent/
+    |
+    +-- cli.py
+    +-- main.py
+    +-- core/
+    |   +-- config.py
+    |   +-- constants.py
+    |   +-- events.py
+    |   +-- exceptions.py
+    |   +-- models.py
+    |   +-- pipeline.py
+    |   +-- ranking_config.py
+    |   +-- schemas.py
+    |   +-- settings.py
+    |   +-- state.py
+    +-- clients/
+    |   +-- arxiv_client.py
+    |   +-- base_client.py
+    |   +-- github_client.py
+    |   +-- huggingface_client.py
+    |   +-- openalex_client.py
+    |   +-- semantic_scholar_client.py
+    |   +-- tavily_client.py
+    |   +-- exa_client.py
+    |   +-- core_client.py
+    |   +-- serper_client.py
+    |   +-- jina_client.py
+    |   +-- serpapi_client.py
+    |   +-- web_search_client.py
+    |   +-- wikipedia_client.py
+    +-- search/
+    +-- ranking/
+    +-- llm/
+    +-- storage/
+    +-- utils/
+    +-- rag/
+    +-- configs/
+    +-- tests/
+
+
+NEW PROJECT STRUCTURE (v2.0):
+==============================
+
+    research_agent/
+    |
+    +-- cli.py                    (MODIFIED: Add agent commands)
+    +-- main.py                   (MODIFIED: Add agent entry point)
+    |
+    +-- agent/                    *** NEW DIRECTORY ***
+    |   +-- __init__.py
+    |   +-- controller.py         (Main autonomous controller)
+    |   +-- loop_engine.py        (Agentic loop)
+    |   +-- loop_state.py         (Loop state management)
+    |   +-- think_step.py         (Think phase)
+    |   +-- act_step.py           (Act phase)
+    |   +-- observe_step.py       (Observe phase)
+    |   +-- reflect_step.py       (Reflect phase)
+    |   |
+    |   +-- token/                *** TOKEN CONTROL ***
+    |   |   +-- __init__.py
+    |   |   +-- budget.py         (Budget configuration)
+    |   |   +-- ledger.py         (Token tracking)
+    |   |   +-- cost_tracker.py   (Cost aggregation)
+    |   |
+    |   +-- planner/              *** PLANNING ***
+    |   |   +-- __init__.py
+    |   |   +-- planner.py        (Main planner)
+    |   |   +-- decomposer.py     (Goal decomposition)
+    |   |   +-- budget_alloc.py   (Budget distribution)
+    |   |   +-- templates.py      (Plan templates)
+    |   |
+    |   +-- tools/                *** TOOL SYSTEM ***
+    |   |   +-- __init__.py
+    |   |   +-- registry.py       (Tool registration)
+    |   |   +-- executor.py       (Tool execution)
+    |   |   +-- search_tools.py   (Search tools)
+    |   |   +-- read_tools.py     (Reading tools)
+    |   |   +-- analysis_tools.py (Analysis tools)
+    |   |   +-- gen_tools.py      (Generation tools)
+    |   |   +-- memory_tools.py   (Memory tools)
+    |   |
+    |   +-- memory/               *** MEMORY SYSTEM ***
+    |   |   +-- __init__.py
+    |   |   +-- short_term.py     (Task context)
+    |   |   +-- long_term.py      (Persistent storage)
+    |   |   +-- episodic.py       (Past runs)
+    |   |   +-- retrieval.py      (Memory search)
+    |   |
+    |   +-- reflection/           *** REFLECTION ***
+    |       +-- __init__.py
+    |       +-- engine.py         (Reflection logic)
+    |       +-- evaluator.py      (Quality scoring)
+    |       +-- decider.py        (Action decisions)
+    |
+    +-- core/                     (EXISTING - keep)
+    +-- clients/                  (EXISTING - keep)
+    +-- search/                   (EXISTING - keep)
+    +-- ranking/                  (EXISTING - keep)
+    +-- llm/                      (EXISTING - keep)
+    +-- storage/                  (EXISTING - keep)
+    +-- utils/                    (EXISTING - keep)
+    +-- rag/                      (EXISTING - keep)
+    +-- configs/                  (EXISTING - modify)
+    |   +-- agent_config.yaml     *** NEW ***
+    +-- tests/                    (EXISTING - extend)
+
+
+TOTAL NEW FILES: ~30
+TOTAL MODIFIED FILES: ~5
+
+====================================================================================================
+SECTION 10: IMPLEMENTATION ORDER
+====================================================================================================
+
+PHASE ORDER (Build in this exact sequence):
+============================================
+
+    PHASE 1: Token Control System (WEEK 1)
+    ----------------------------------------
+    Priority: CRITICAL (Foundation for everything)
+    
+    Files to create:
+      1. agent/token/budget.py
+      2. agent/token/ledger.py
+      3. agent/token/cost_tracker.py
+    
+    Integration:
+      - Modify llm/provider.py to report tokens per call
+      - Modify core/pipeline.py to track total tokens
+    
+    Test:
+      - Run existing pipeline with token tracking
+      - Verify token counts are accurate
+      - Set budget limits and verify enforcement
+
+
+    PHASE 2: Tool System (WEEK 2)
+    ----------------------------------------
+    Priority: HIGH (Enables dynamic tool use)
+    
+    Files to create:
+      1. agent/tools/registry.py
+      2. agent/tools/executor.py
+      3. agent/tools/search_tools.py
+      4. agent/tools/read_tools.py
+      5. agent/tools/analysis_tools.py
+      6. agent/tools/gen_tools.py
+    
+    Integration:
+      - Wrap existing clients as tools
+      - Register all 12+ search platforms as tools
+    
+    Test:
+      - Call each tool individually
+      - Verify budget tracking per tool call
+
+
+    PHASE 3: Memory System (WEEK 3)
+    ----------------------------------------
+    Priority: HIGH (Enables learning from past)
+    
+    Files to create:
+      1. agent/memory/short_term.py
+      2. agent/memory/long_term.py
+      3. agent/memory/episodic.py
+      4. agent/memory/retrieval.py
+    
+    Integration:
+      - Connect to existing SQLite database
+      - Add memory tables for agent state
+    
+    Test:
+      - Save and retrieve research results
+      - Verify cross-run memory works
+
+
+    PHASE 4: Reflection Engine (WEEK 4)
+    ----------------------------------------
+    Priority: MEDIUM (Improves quality)
+    
+    Files to create:
+      1. agent/reflection/engine.py
+      2. agent/reflection/evaluator.py
+      3. agent/reflection/decider.py
+    
+    Integration:
+      - Connect to ranking output
+      - Add quality scoring
+    
+    Test:
+      - Evaluate sample outputs
+      - Verify retry logic works
+
+
+    PHASE 5: Planner Module (WEEK 5)
+    ----------------------------------------
+    Priority: HIGH (Enables dynamic planning)
+    
+    Files to create:
+      1. agent/planner/planner.py
+      2. agent/planner/decomposer.py
+      3. agent/planner/budget_alloc.py
+      4. agent/planner/templates.py
+    
+    Integration:
+      - Connect to token budget system
+      - Generate plans from goals
+    
+    Test:
+      - Decompose sample goals
+      - Verify budget allocation
+
+
+    PHASE 6: Agentic Loop Engine (WEEK 6-7)
+    ----------------------------------------
+    Priority: CRITICAL (Core of autonomy)
+    
+    Files to create:
+      1. agent/loop_engine.py
+      2. agent/loop_state.py
+      3. agent/think_step.py
+      4. agent/act_step.py
+      5. agent/observe_step.py
+      6. agent/reflect_step.py
+    
+    Integration:
+      - Connect all previous phases
+      - Wire up tool registry
+      - Connect memory system
+      - Connect token budget
+    
+    Test:
+      - Run full autonomous loop
+      - Verify budget enforcement
+      - Verify self-correction works
+
+
+    PHASE 7: Controller + CLI (WEEK 8)
+    ----------------------------------------
+    Priority: CRITICAL (User interface)
+    
+    Files to create:
+      1. agent/controller.py
+    
+    Files to modify:
+      1. cli.py (add agent commands)
+      2. main.py (add agent entry point)
+      3. configs/agent_config.yaml (new)
+    
+    Integration:
+      - Add "agent" command to CLI
+      - Connect controller to loop engine
+    
+    Test:
+      - Run full end-to-end autonomous research
+      - Compare quality with v1.0 pipeline
+
+
+TIMELINE SUMMARY:
+=================
+
+    Week 1: Token Control System        [FOUNDATION]
+    Week 2: Tool System                 [TOOLS]
+    Week 3: Memory System               [MEMORY]
+    Week 4: Reflection Engine           [QUALITY]
+    Week 5: Planner Module              [PLANNING]
+    Week 6-7: Agentic Loop Engine       [CORE LOOP]
+    Week 8: Controller + CLI            [INTERFACE]
+
+    Total Duration: 8 weeks
+    Total New Files: ~30
+    Total Modified Files: ~5
+
+====================================================================================================
+SECTION 11: TOKEN BUDGET PER RUN
+====================================================================================================
+
+ESTIMATED TOKEN USAGE FOR ONE AUTONOMOUS RUN:
+==============================================
+
+    +----------------------------------------------------------+
+    | COMPONENT              | TOKENS  | MODEL    | CALLS     |
+    |------------------------+---------+----------+-----------|
+    | Planning (decompose)   | 2,000   | STRONG   | 1         |
+    | Budget allocation      | 500     | FAST     | 1         |
+    | Think steps (x10)      | 2,000   | FAST     | 10        |
+    | Search queries (x8)    | 2,400   | FAST     | 8         |
+    | Source reading (x10)   | 10,000  | FAST     | 10        |
+    | Ranking (ensemble)     | 6,000   | STRONG   | 3         |
+    | Summarization (x10)    | 5,000   | FAST     | 10        |
+    | Reflection (x5)        | 1,500   | FAST     | 5         |
+    | Learning path build    | 3,000   | STRONG   | 1         |
+    | Final synthesis        | 3,000   | STRONG   | 1         |
+    |------------------------+---------+----------+-----------|
+    | TOTAL ESTIMATED        | 35,400  |          | ~50 calls |
+    | BUDGET LIMIT           | 40,000  |          |           |
+    | SAFETY MARGIN          | 4,600   |          |           |
+    +----------------------------------------------------------+
+
+    RULES:
+    - 80% of calls use FAST model (cheap)
+    - 20% of calls use STRONG model (expensive)
+    - Never exceed 50 LLM calls per run
+    - Reserve 10% budget for unexpected retries
+
+
+COMPARISON WITH CURRENT PIPELINE:
+==================================
+
+    +----------------------------------------------------------+
+    | METRIC              | v1.0 Pipeline | v2.0 Autonomous   |
+    |---------------------+---------------+-------------------|
+    | Tokens per run      | ~65,000       | ~35,400           |
+    | LLM calls per run   | ~30           | ~50               |
+    | Model usage         | All STRONG    | 80% FAST          |
+    | Budget enforcement  | None          | Strict            |
+    | Self-correction     | None          | Yes               |
+    | Runs per day (free) | 2-3           | 5-8               |
+    +----------------------------------------------------------+
+
+====================================================================================================
+SECTION 12: FREE-TIER COMPATIBILITY
+====================================================================================================
+
+CURRENT FREE-TIER PROVIDERS:
+=============================
+
+    +----------------------------------------------------------+
+    | PROVIDER    | FREE LIMIT          | USE FOR             |
+    |-------------+---------------------+---------------------|
+    | Groq        | ~14k tokens/min     | FAST model calls    |
+    | Mistral     | Limited requests    | STRONG model calls  |
+    | SambaNova   | Rate limited        | Backup STRONG       |
+    | Tavily      | 1000 searches/mo    | Web search          |
+    | Exa         | 1000 searches/mo    | Semantic search     |
+    | Serper      | 2500 credits        | Google search       |
+    | Jina        | 10M tokens          | URL reading         |
+    +----------------------------------------------------------+
+
+DAILY BUDGET ALLOCATION:
+=========================
+
+    Assuming 5 autonomous runs per day:
+    
+    Total daily token budget: 5 x 40,000 = 200,000 tokens
+    
+    Provider allocation:
+    - Groq (FAST):     ~160,000 tokens (80%)
+    - Mistral (STRONG): ~30,000 tokens (15%)
+    - SambaNova:        ~10,000 tokens (5%)
+    
+    This fits within free-tier limits with margin.
+
+
+PROVIDER FALLBACK CHAIN:
+=========================
+
+    FAST model chain:
+    1. Groq qwen/qwen3.8-27b (primary)
+    2. Mistral ministral-3b-2512 (fallback)
+    3. Mistral mistral-small-latest (fallback)
+    
+    STRONG model chain:
+    1. Mistral mistral-medium-latest (primary)
+    2. Mistral open-mistral-nemo (fallback)
+    3. SambaNova gemma-4-31B-it (fallback)
+    4. SambaNova MiniMax-M2.7 (fallback)
+
+====================================================================================================
+END OF UPGRADE PLAN
+====================================================================================================
+
+SUMMARY:
+--------
+This upgrade transforms the Research Agent from a linear pipeline
+into a fully autonomous AI agent that can:
+
+1. Plan dynamically based on the user's goal
+2. Execute multi-step research with self-correction
+3. Remember past research and avoid repetition
+4. Control token usage to stay within free-tier limits
+5. Discover and use tools dynamically
+6. Reflect on its own output quality and improve
+
+The upgrade is designed to be built incrementally over 8 weeks,
+with each phase building on the previous one. The token control
+system is the foundation and must be built first.
+
+Total new code: ~30 files
+Total modified code: ~5 files
+Estimated timeline: 8 weeks
+Token efficiency: 45% reduction vs current pipeline
+
+====================================================================================================

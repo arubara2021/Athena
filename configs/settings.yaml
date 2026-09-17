@@ -1,0 +1,114 @@
+app:
+  name: "research_agent"
+  version: "0.2.0"
+  environment: "development"
+  debug: false
+
+logging:
+  level: "INFO"
+  directory: "logs"
+  max_bytes: 5242880
+  backup_count: 5
+  json_output: true
+
+storage:
+  output_directory: "output"
+  cache_directory: "cache"
+  data_directory: "data"
+  database_filename: "research_agent.db"
+  json_subdirectory: "json"
+  markdown_subdirectory: "markdown"
+  reports_subdirectory: "reports"
+
+http:
+  timeout_seconds: 30
+  connect_timeout_seconds: 10
+  max_retries: 2
+  retry_backoff_seconds: 1
+  follow_redirects: true
+
+cache:
+  enabled: true
+  default_ttl_seconds: 86400
+  max_entries: 10000
+
+search:
+  default_max_results: 20
+  min_max_results: 1
+  max_max_results: 100
+  max_query_variants: 5
+  concurrency: 6
+  request_timeout_seconds: 30
+  use_llm_expansion: true
+  universal_query_correction: true
+  correct_spelling: true
+  extract_primary_concept: true
+  extract_keywords: true
+  generate_short_search_queries: true
+  detect_intent: true
+  detect_level: true
+  fallback_to_local: true
+
+ranking:
+  use_llm: true
+  max_llm_sources: 20
+  max_models: 3
+  heuristic_fallback_enabled: true
+
+learning_path:
+  use_llm: true
+  max_resources_per_step: 4
+
+cli:
+  goal: "Learn from basics to advanced"
+  level: "beginner to advanced"
+  max_results: 20
+  display_limit: 10
+  use_llm_expansion: true
+  use_llm_ranking: true
+  use_llm_learning_path: true
+  enable_rag: true
+  show_ai_query_understanding: true
+  show_failed_platforms: true
+  show_no_source_diagnosis: true
+
+query_intelligence:
+  enabled: true
+  auto_correct: true
+  use_llm_when_provider_available: true
+  fallback_to_local: true
+  require_llm_keys: true
+  max_corrected_topic_words: 6
+  max_primary_concept_words: 5
+  max_keywords: 8
+  max_short_queries: 6
+  max_query_words: 7
+  temperature: 0.0
+  max_tokens: 1024
+  model_limit: 3
+  timeout_seconds: 30
+
+llm:
+  primary_fast_model: "qwen/qwen3.8-27b"
+  primary_strong_model: "gemma-4-31B-it"
+  ensemble_judge_model: "ministral-14b-2512"
+  code_model: "codestral-latest"
+  embedding_model: "mistral-embed"
+  
+  fast_model_chain:
+    - "qwen/qwen3.8-27b"
+    - "ministral-3b-2512"
+    - "gemini-3.5-flash"
+    
+  strong_model_chain:
+    - "gemma-4-31B-it"
+    - "ministral-14b-2512"
+    - "MiniMax-M2.7"
+    
+  voting_mode: "majority"
+  consensus_threshold: 0.7
+  rate_limit_per_minute: 15
+  timeout_seconds: 45
+  connect_timeout_seconds: 10
+  max_retries: 2
+  retry_backoff_seconds: 1.5

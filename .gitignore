@@ -1,0 +1,51 @@
+# === Python ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+*.whl
+
+# === Virtual environments ===
+.venv/
+venv/
+env/
+.python-version
+
+# === Environment / Secrets ===
+.env
+
+# === Generated outputs (not source code) ===
+output/
+
+# === Runtime data / databases ===
+data/*.db
+data/*.json
+data/vector_store.json
+
+# === Logs ===
+logs/
+
+# === Cache ===
+cache/
+
+# === IDE / Editor ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+Research_agent/.obsidian/
+
+# === OS files ===
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# === Project junk ===
+code_dump.txt
+test.log
+*.log

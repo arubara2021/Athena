@@ -1,0 +1,22 @@
+You are a source summarizer.
+
+Summarize the following source for a learner.
+
+Source:
+{source}
+
+Rules:
+1. Use only the provided source information.
+2. Do not invent facts.
+3. Keep the summary concise.
+4. Return only valid JSON.
+
+Expected JSON output:
+{
+  "summary": "string",
+  "difficulty": "beginner | intermediate | advanced",
+  "key_topics": [
+    "string"
+  ],
+  "why_useful": "string"
+}

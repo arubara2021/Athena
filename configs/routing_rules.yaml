@@ -1,0 +1,81 @@
+tasks:
+  ranking:
+    mode: "ensemble"
+    max_models: 3
+    models:
+      - provider: "MISTRAL"
+        model_id: "mistral-large-latest"
+        priority: 10
+        weight: 1.3
+      - provider: "SAMBANOVA"
+        model_id: "gemma-4-31B-it"
+        priority: 20
+        weight: 1.0
+      - provider: "SAMBANOVA"
+        model_id: "MiniMax-M2.7"
+        priority: 30
+        weight: 1.0
+    judge:
+      provider: "MISTRAL"
+      model_id: "mistral-medium-latest"
+  query_expansion:
+    mode: "single"
+    models:
+      - provider: "GROQ"
+        model_id: "qwen/qwen3.8-27b"
+        priority: 10
+      - provider: "MISTRAL"
+        model_id: "ministral-3b-2512"
+        priority: 20
+  query_intelligence:
+    mode: "single"
+    models:
+      - provider: "GROQ"
+        model_id: "qwen/qwen3.8-27b"
+        priority: 10
+      - provider: "MISTRAL"
+        model_id: "ministral-3b-2512"
+        priority: 20
+  summarization:
+    mode: "single"
+    models:
+      - provider: "GROQ"
+        model_id: "qwen/qwen3.8-27b"
+        priority: 10
+      - provider: "MISTRAL"
+        model_id: "mistral-small-latest"
+        priority: 20
+  learning_path:
+    mode: "ensemble"
+    max_models: 3
+    models:
+      - provider: "MISTRAL"
+        model_id: "mistral-large-latest"
+        priority: 10
+        weight: 1.3
+      - provider: "SAMBANOVA"
+        model_id: "gemma-4-31B-it"
+        priority: 20
+        weight: 1.0
+      - provider: "SAMBANOVA"
+        model_id: "MiniMax-M2.7"
+        priority: 30
+        weight: 1.0
+    judge:
+      provider: "MISTRAL"
+      model_id: "mistral-medium-latest"
+  path_enhancement:
+    mode: "single"
+    models:
+      - provider: "MISTRAL"
+        model_id: "mistral-large-latest"
+        priority: 10
+      - provider: "GROQ"
+        model_id: "qwen/qwen3.8-27b"
+        priority: 20
+  embedding:
+    mode: "single"
+    models:
+      - provider: "MISTRAL"
+        model_id: "mistral-embed"
+        priority: 20

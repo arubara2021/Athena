@@ -1,0 +1,89 @@
+defaults:
+  total_budget_per_task: 40000
+  wrap_up_threshold: 5000
+  wrap_up_mode_budget: 3000
+  currency: "tokens"
+  allow_burst: false
+  burst_multiplier: 1.15
+
+categories:
+  planning:
+    max_tokens: 5000
+    priority: 1
+    model_tier: "fast"
+  query_expansion:
+    max_tokens: 3000
+    priority: 2
+    model_tier: "fast"
+  search:
+    max_tokens: 3000
+    priority: 3
+    model_tier: "fast"
+  reading:
+    max_tokens: 15000
+    priority: 4
+    model_tier: "fast"
+  ranking:
+    max_tokens: 8000
+    priority: 5
+    model_tier: "strong"
+  summarization:
+    max_tokens: 6000
+    priority: 6
+    model_tier: "fast"
+  learning_path:
+    max_tokens: 6000
+    priority: 7
+    model_tier: "strong"
+  path_enhancement:
+    max_tokens: 4000
+    priority: 8
+    model_tier: "strong"
+  reflection:
+    max_tokens: 3000
+    priority: 9
+    model_tier: "fast"
+  judge:
+    max_tokens: 5000
+    priority: 10
+    model_tier: "strong"
+
+model_tiers:
+  fast:
+    cost_weight: 1.0
+    max_tokens_per_call: 2048
+    preferred_providers:
+      - "GROQ"
+      - "MISTRAL"
+  strong:
+    cost_weight: 2.5
+    max_tokens_per_call: 4096
+    preferred_providers:
+      - "MISTRAL"
+      - "SAMBANOVA"
+  judge:
+    cost_weight: 3.0
+    max_tokens_per_call: 4096
+    preferred_providers:
+      - "MISTRAL"
+
+circuit_breaker:
+  enabled: true
+  warning_threshold_percent: 80.0
+  critical_threshold_percent: 95.0
+  cooldown_seconds: 0
+  max_consecutive_exceedances: 3
+
+ledger:
+  filename: "token_ledger.jsonl"
+  flush_interval_entries: 10
+  max_entries_in_memory: 10000
+  include_raw_response: false
+  include_prompt_preview_length: 100
+
+reporting:
+  include_per_model_breakdown: true
+  include_per_category_breakdown: true
+  include_timeline: false
+  save_report_to_file: true
+  report_filename_prefix: "token_usage_report"

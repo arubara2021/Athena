@@ -1,0 +1,300 @@
+
+    Directory: C:\Users\arun0\Videos\research_agent
+
+
+Mode                 LastWriteTime         Length Name                                                                                                                                                   
+----                 -------------         ------ ----                                                                                                                                                   
+d-----        22/08/2026     17:55                cache                                                                                                                                                  
+d-----        24/08/2026     21:19                clients                                                                                                                                                
+d-----        25/08/2026     21:29                configs                                                                                                                                                
+d-----        25/08/2026     21:29                core                                                                                                                                                   
+d-----        26/08/2026     14:22                data                                                                                                                                                   
+d-----        22/08/2026     17:31                docs                                                                                                                                                   
+d-----        25/08/2026     19:44                llm                                                                                                                                                    
+d-----        25/08/2026     21:29                logs                                                                                                                                                   
+d-----        22/08/2026     11:40                output                                                                                                                                                 
+d-----        24/08/2026     21:07                prompts                                                                                                                                                
+d-----        25/08/2026     21:46                rag                                                                                                                                                    
+d-----        24/08/2026     21:19                ranking                                                                                                                                                
+d-----        24/08/2026     21:07                scripts                                                                                                                                                
+d-----        24/08/2026     21:19                search                                                                                                                                                 
+d-----        24/08/2026     21:19                storage                                                                                                                                                
+d-----        24/08/2026     21:07                tests                                                                                                                                                  
+d-----        24/08/2026     21:19                utils                                                                                                                                                  
+d-----        24/08/2026     21:19                __pycache__                                                                                                                                            
+-a----        24/08/2026     19:37           1150 .env                                                                                                                                                   
+-a----        22/08/2026     13:29            816 .env.example                                                                                                                                           
+-a----        22/08/2026     11:40              0 .gitignore                                                                                                                                             
+-a----        22/08/2026     13:29              0 .python-version                                                                                                                                        
+-a----        24/08/2026     21:19          36981 cli.py                                                                                                                                                 
+-a----        22/08/2026     14:41             99 main.py                                                                                                                                                
+-a----        22/08/2026     11:40              0 Makefile                                                                                                                                               
+-a----        22/08/2026     11:40              0 pyproject.toml                                                                                                                                         
+-a----        22/08/2026     17:30           7897 README.md                                                                                                                                              
+-a----        22/08/2026     17:30             74 requirements.txt                                                                                                                                       
+
+
+PS C:\Users\arun0\Videos\research_agent> tree /f
+Folder PATH listing for volume Windows
+Volume serial number is 00000073 1C89:F812
+C:.
+│   .env
+│   .env.example
+│   .gitignore
+│   .python-version
+│   cli.py
+│   main.py
+│   Makefile
+│   pyproject.toml
+│   README.md
+│   requirements.txt
+│   
+├───cache
+├───clients
+│   │   arxiv_client.py
+│   │   base_client.py
+│   │   github_client.py
+│   │   huggingface_client.py
+│   │   openalex_client.py
+│   │   semantic_scholar_client.py
+│   │   web_search_client.py
+│   │   wikipedia_client.py
+│   │   __init__.py
+│   │   
+│   └───__pycache__
+│           arxiv_client.cpython-310.pyc
+│           base_client.cpython-310.pyc
+│           github_client.cpython-310.pyc
+│           huggingface_client.cpython-310.pyc
+│           openalex_client.cpython-310.pyc
+│           semantic_scholar_client.cpython-310.pyc
+│           web_search_client.cpython-310.pyc
+│           wikipedia_client.cpython-310.pyc
+│           __init__.cpython-310.pyc
+│           
+├───configs
+│       ensemble.yaml
+│       models.yaml
+│       provider_config.yaml
+│       ranking.yaml
+│       routing_rules.yaml
+│       settings.yaml
+│       sources.yaml
+│       
+├───core
+│   │   config.py
+│   │   constants.py
+│   │   events.py
+│   │   exceptions.py
+│   │   models.py
+│   │   pipeline.py
+│   │   ranking_config.py
+│   │   schemas.py
+│   │   settings.py
+│   │   state.py
+│   │   __init__.py
+│   │   
+│   └───__pycache__
+│           config.cpython-310.pyc
+│           constants.cpython-310.pyc
+│           events.cpython-310.pyc
+│           exceptions.cpython-310.pyc
+│           models.cpython-310.pyc
+│           pipeline.cpython-310.pyc
+│           ranking_config.cpython-310.pyc
+│           schemas.cpython-310.pyc
+│           settings.cpython-310.pyc
+│           state.cpython-310.pyc
+│           __init__.cpython-310.pyc
+│           
+├───data
+│   │   research_agent.db
+│   │   vector_store.json
+│   │   
+│   ├───processed
+│   │       .gitkeep
+│   │       
+│   └───raw
+│           .gitkeep
+│           
+├───docs
+│       architecture.md
+│       future.md
+│       roadmap.md
+│       
+├───llm
+│   │   aggregator.py
+│   │   ensemble.py
+│   │   guardrails.py
+│   │   parser.py
+│   │   prompts.py
+│   │   provider.py
+│   │   router.py
+│   │   __init__.py
+│   │   
+│   ├───prompts
+│   │       ranking_prompt.txt
+│   │       
+│   └───__pycache__
+│           aggregator.cpython-310.pyc
+│           ensemble.cpython-310.pyc
+│           guardrails.cpython-310.pyc
+│           parser.cpython-310.pyc
+│           prompts.cpython-310.pyc
+│           provider.cpython-310.pyc
+│           router.cpython-310.pyc
+│           __init__.cpython-310.pyc
+│           
+├───logs
+│       debug_trace.jsonl
+│       research_agent.log
+│       
+├───output
+│   │   .gitkeep
+│   │   
+│   ├───json
+│   │       GLEU_from_ML_20260826_081357.json
+│   │       I_want_to_learn_about_MOE_models_from_basics_20260826_084129.json
+│   │       I_want_to_learn_about_MOE_models_from_basics_20260826_085230.json
+│   │       Relu_from_maths_20260825_161603.json
+│   │       
+│   ├───markdown
+│   │       GLEU_from_ML_20260826_081357.md
+│   │       I_want_to_learn_about_MOE_models_from_basics_20260826_084129.md
+│   │       I_want_to_learn_about_MOE_models_from_basics_20260826_085230.md
+│   │       Relu_from_maths_20260825_161603.md
+│   │       
+│   └───reports
+│           GLEU_from_ML_20260826_081357.html
+│           I_want_to_learn_about_MOE_models_from_basics_20260826_084129.html
+│           I_want_to_learn_about_MOE_models_from_basics_20260826_085230.html
+│           Relu_from_maths_20260825_161603.html
+│           
+├───prompts
+│       aggregator_prompt.txt
+│       consensus_judge.txt
+│       difficulty_prompt.txt
+│       learning_path.txt
+│       learning_path_prompt.txt
+│       ranking_prompt.txt
+│       router_prompt.txt
+│       search_ranking.txt
+│       source_summary.txt
+│       source_summary_prompt.txt
+│       
+├───rag
+│   │   chat_engine.py
+│   │   embedder.py
+│   │   vector_store.py
+│   │   __init__.py
+│   │   
+│   └───__pycache__
+│           embedder.cpython-310.pyc
+│           vector_store.cpython-310.pyc
+│           __init__.cpython-310.pyc
+│           
+├───ranking
+│   │   consensus_ranker.py
+│   │   difficulty_classifier.py
+│   │   learning_path_builder.py
+│   │   llm_ranker.py
+│   │   path_enhancer.py
+│   │   scorer.py
+│   │   source_summarizer.py
+│   │   __init__.py
+│   │   
+│   └───__pycache__
+│           consensus_ranker.cpython-310.pyc
+│           difficulty_classifier.cpython-310.pyc
+│           learning_path_builder.cpython-310.pyc
+│           path_enhancer.cpython-310.pyc
+│           scorer.cpython-310.pyc
+│           source_summarizer.cpython-310.pyc
+│           __init__.cpython-310.pyc
+│           
+├───scripts
+│       check_apis.py
+│       check_models.py
+│       install.ps1
+│       run_search.ps1
+│       
+├───search
+│   │   dedupe.py
+│   │   normalizer.py
+│   │   orchestrator.py
+│   │   query_expander.py
+│   │   query_intelligence.py
+│   │   source_fetcher.py
+│   │   validator.py
+│   │   __init__.py
+│   │   
+│   └───__pycache__
+│           dedupe.cpython-310.pyc
+│           normalizer.cpython-310.pyc
+│           orchestrator.cpython-310.pyc
+│           query_expander.cpython-310.pyc
+│           query_intelligence.cpython-310.pyc
+│           source_fetcher.cpython-310.pyc
+│           validator.cpython-310.pyc
+│           __init__.cpython-310.pyc
+│           
+├───storage
+│   │   file_manager.py
+│   │   html_writer.py
+│   │   json_writer.py
+│   │   markdown_writer.py
+│   │   sqlite_store.py
+│   │   __init__.py
+│   │   
+│   └───__pycache__
+│           file_manager.cpython-310.pyc
+│           html_writer.cpython-310.pyc
+│           json_writer.cpython-310.pyc
+│           markdown_writer.cpython-310.pyc
+│           sqlite_store.cpython-310.pyc
+│           __init__.cpython-310.pyc
+│           
+├───tests
+│   │   conftest.py
+│   │   __init__.py
+│   │   
+│   ├───fixtures
+│   │       sample_arxiv.json
+│   │       sample_semantic_scholar.json
+│   │       
+│   ├───integration
+│   │       test_search_pipeline.py
+│   │       __init__.py
+│   │       
+│   └───unit
+│           test_arxiv.py
+│           test_dedupe.py
+│           test_ranking.py
+│           __init__.py
+│           
+├───utils
+│   │   async_helpers.py
+│   │   cache.py
+│   │   hashing.py
+│   │   logger.py
+│   │   rate_limiter.py
+│   │   retry.py
+│   │   text.py
+│   │   url.py
+│   │   validators.py
+│   │   __init__.py
+│   │   
+│   └───__pycache__
+│           async_helpers.cpython-310.pyc
+│           cache.cpython-310.pyc
+│           hashing.cpython-310.pyc
+│           logger.cpython-310.pyc
+│           rate_limiter.cpython-310.pyc
+│           text.cpython-310.pyc
+│           url.cpython-310.pyc
+│           __init__.cpython-310.pyc
+│           
+└───__pycache__
+        cli.cpython-310.pyc
+        
+PS C:\Users\arun0\Videos\research_agent> 
