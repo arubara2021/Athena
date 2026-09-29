@@ -1,0 +1,46 @@
+theme:
+  default: athena-midnight
+  order:
+    - athena-midnight
+    - athena-paper
+    - athena-mono
+
+layout:
+  chat:
+    - chat_stream
+    - input_bar
+    - footer_bar
+  research:
+    - chat_stream
+    - stage_panel
+    - source_panel
+    - path_panel
+    - input_bar
+    - footer_bar
+  agent:
+    - chat_stream
+    - stage_panel
+    - pulse_panel
+    - source_panel
+    - path_panel
+    - input_bar
+    - footer_bar
+
+bindings:
+  ctrl+q: app.quit
+  ctrl+p: app.palette
+  ctrl+n: session.new
+  ctrl+b: view.left
+  ctrl+r: view.right
+  ctrl+t: view.theme
+  ctrl+slash: app.help
+
+panels:
+  chat_stream:
+    max_messages: 500
+  stage_panel:
+    compact: false
+  source_panel:
+    page_size: 25
+  path_panel:
+    expand_first: true

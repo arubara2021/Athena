@@ -1,80 +1,533 @@
 platforms:
   arxiv:
     enabled: true
+    tier: research
+    level_affinity: advanced
     max_results_per_query: 10
-    timeout_seconds: 30
+    timeout_seconds: 8
     rate_limit_per_minute: 5
+    requires_api_key: false
+    domains:
+      - science
+      - computer_science
+      - mathematics
+      - physics
+      - engineering
+      - chemistry
+      - biology
+    default_difficulty: advanced
+    source_type: research_paper
+    beginner_friendly: false
+    research_level: true
 
   semantic_scholar:
-    enabled: false  # Disabled: Returning 403 Forbidden (no valid API key)
+    enabled: true
+    tier: research
+    level_affinity: advanced
     max_results_per_query: 10
-    timeout_seconds: 30
+    timeout_seconds: 8
+    rate_limit_per_minute: 3
+    requires_api_key: false
+    domains:
+      - general
+      - science
+      - computer_science
+      - mathematics
+      - physics
+      - chemistry
+      - biology
+      - medicine
+    default_difficulty: advanced
+    source_type: research_paper
+    beginner_friendly: false
+    research_level: true
 
   openalex:
     enabled: true
+    tier: research
+    level_affinity: advanced
     max_results_per_query: 10
-    timeout_seconds: 30
-    rate_limit_per_minute: 20
-
-  github:
-    enabled: true
-    max_results_per_query: 8
-    timeout_seconds: 30
+    timeout_seconds: 8
     rate_limit_per_minute: 10
+    requires_api_key: false
+    domains:
+      - general
+      - science
+      - computer_science
+      - mathematics
+      - physics
+      - chemistry
+      - biology
+      - medicine
+      - law
+      - humanities
+      - social_science
+      - education
+    default_difficulty: intermediate
+    source_type: research_paper
+    beginner_friendly: false
+    research_level: true
+
+  crossref:
+    enabled: true
+    tier: research
+    level_affinity: advanced
+    max_results_per_query: 10
+    timeout_seconds: 8
+    rate_limit_per_minute: 20
+    requires_api_key: false
+    domains:
+      - general
+      - science
+      - computer_science
+      - mathematics
+      - physics
+      - chemistry
+      - biology
+      - medicine
+      - law
+      - humanities
+      - social_science
+      - education
+    default_difficulty: advanced
+    source_type: research_paper
+    beginner_friendly: false
+    research_level: true
+
+  europe_pmc:
+    enabled: true
+    tier: research
+    level_affinity: advanced
+    max_results_per_query: 10
+    timeout_seconds: 8
+    rate_limit_per_minute: 20
+    requires_api_key: false
+    domains:
+      - medicine
+      - biology
+      - chemistry
+    default_difficulty: advanced
+    source_type: research_paper
+    beginner_friendly: false
+    research_level: true
+
+  pubmed:
+    enabled: true
+    tier: research
+    level_affinity: advanced
+    max_results_per_query: 10
+    timeout_seconds: 8
+    rate_limit_per_minute: 60
+    requires_api_key: false
+    domains:
+      - medicine
+      - biology
+      - chemistry
+    default_difficulty: advanced
+    source_type: research_paper
+    beginner_friendly: false
+    research_level: true
+
+  doaj:
+    enabled: true
+    tier: research
+    level_affinity: advanced
+    max_results_per_query: 10
+    timeout_seconds: 8
+    rate_limit_per_minute: 20
+    requires_api_key: false
+    domains:
+      - general
+      - science
+      - computer_science
+      - mathematics
+      - physics
+      - chemistry
+      - biology
+      - medicine
+      - law
+      - humanities
+      - social_science
+      - education
+    default_difficulty: advanced
+    source_type: research_paper
+    beginner_friendly: false
+    research_level: true
+
+  core:
+    enabled: false
+    tier: research
+    level_affinity: advanced
+    max_results_per_query: 10
+    timeout_seconds: 8
+    rate_limit_per_minute: 10
+    requires_api_key: true
+    api_key_setting: core_api_key
+    domains:
+      - general
+      - science
+    default_difficulty: advanced
+    source_type: research_paper
+    beginner_friendly: false
+    research_level: true
+
+  zenodo:
+    enabled: true
+    tier: reference
+    level_affinity: any
+    max_results_per_query: 10
+    timeout_seconds: 8
+    rate_limit_per_minute: 20
+    requires_api_key: false
+    domains:
+      - general
+      - science
+      - computer_science
+      - data_science
+      - engineering
+      - mathematics
+      - physics
+      - chemistry
+      - biology
+    default_difficulty: intermediate
+    source_type: dataset
+    beginner_friendly: false
+    research_level: true
 
   wikipedia:
     enabled: true
+    tier: reference
+    level_affinity: any
     max_results_per_query: 8
-    timeout_seconds: 30
+    timeout_seconds: 8
     rate_limit_per_minute: 8
+    requires_api_key: false
+    domains:
+      - general
+      - education
+      - computer_science
+      - mathematics
+      - physics
+      - chemistry
+      - biology
+      - medicine
+      - law
+      - humanities
+      - social_science
+    default_difficulty: beginner
+    source_type: documentation
+    beginner_friendly: true
+    research_level: false
+
+  open_library:
+    enabled: true
+    tier: beginner
+    level_affinity: beginner
+    max_results_per_query: 10
+    timeout_seconds: 8
+    rate_limit_per_minute: 20
+    requires_api_key: false
+    domains:
+      - general
+      - education
+      - humanities
+      - law
+      - social_science
+      - chemistry
+      - biology
+      - medicine
+      - computer_science
+      - mathematics
+      - physics
+    default_difficulty: beginner
+    source_type: book
+    beginner_friendly: true
+    research_level: false
+
+  internet_archive:
+    enabled: true
+    tier: beginner
+    level_affinity: beginner
+    max_results_per_query: 10
+    timeout_seconds: 8
+    rate_limit_per_minute: 10
+    requires_api_key: false
+    domains:
+      - general
+      - education
+      - humanities
+      - law
+      - social_science
+      - chemistry
+      - biology
+      - medicine
+      - computer_science
+      - mathematics
+      - physics
+    default_difficulty: beginner
+    source_type: book
+    beginner_friendly: true
+    research_level: false
+
+  wikibooks:
+    enabled: true
+    tier: beginner
+    level_affinity: beginner
+    max_results_per_query: 8
+    timeout_seconds: 8
+    rate_limit_per_minute: 8
+    requires_api_key: false
+    domains:
+      - general
+      - education
+      - computer_science
+      - mathematics
+      - physics
+      - chemistry
+      - biology
+      - medicine
+      - law
+      - humanities
+      - social_science
+    default_difficulty: beginner
+    source_type: book
+    beginner_friendly: true
+    research_level: false
+
+  wikiversity:
+    enabled: true
+    tier: beginner
+    level_affinity: beginner
+    max_results_per_query: 8
+    timeout_seconds: 8
+    rate_limit_per_minute: 8
+    requires_api_key: false
+    domains:
+      - education
+      - general
+      - computer_science
+      - mathematics
+      - physics
+      - chemistry
+      - biology
+      - law
+      - humanities
+      - social_science
+    default_difficulty: beginner
+    source_type: course
+    beginner_friendly: true
+    research_level: false
+
+  openstax:
+    enabled: true
+    tier: beginner
+    level_affinity: beginner
+    max_results_per_query: 8
+    timeout_seconds: 8
+    rate_limit_per_minute: 8
+    requires_api_key: false
+    domains:
+      - education
+      - general
+      - computer_science
+      - mathematics
+      - physics
+      - chemistry
+      - biology
+      - medicine
+      - social_science
+      - humanities
+    default_difficulty: beginner
+    source_type: course
+    beginner_friendly: true
+    research_level: false
+
+  mit_ocw:
+    enabled: true
+    tier: beginner
+    level_affinity: beginner
+    max_results_per_query: 8
+    timeout_seconds: 8
+    rate_limit_per_minute: 8
+    requires_api_key: false
+    domains:
+      - education
+      - computer_science
+      - mathematics
+      - physics
+      - chemistry
+      - biology
+      - engineering
+    default_difficulty: beginner
+    source_type: course
+    beginner_friendly: true
+    research_level: false
+
+  libretexts:
+    enabled: false
+    tier: beginner
+    level_affinity: beginner
+    max_results_per_query: 8
+    timeout_seconds: 8
+    rate_limit_per_minute: 8
+    requires_api_key: false
+    domains:
+      - education
+      - general
+      - computer_science
+      - mathematics
+      - physics
+      - chemistry
+      - biology
+      - medicine
+      - social_science
+      - humanities
+    default_difficulty: beginner
+    source_type: course
+    beginner_friendly: true
+    research_level: false
+
+  github:
+    enabled: true
+    tier: code
+    level_affinity: intermediate
+    max_results_per_query: 8
+    timeout_seconds: 8
+    rate_limit_per_minute: 10
+    requires_api_key: false
+    domains:
+      - computer_science
+      - data_science
+      - engineering
+    default_difficulty: intermediate
+    source_type: repository
+    beginner_friendly: false
+    research_level: false
 
   huggingface:
     enabled: true
+    tier: code
+    level_affinity: advanced
     max_results_per_query: 8
-    timeout_seconds: 30
+    timeout_seconds: 8
     rate_limit_per_minute: 20
+    requires_api_key: false
+    domains:
+      - computer_science
+      - data_science
+    default_difficulty: advanced
+    source_type: model
+    beginner_friendly: false
+    research_level: false
 
   web:
-    enabled: false  # Disabled: Relying on dedicated search APIs instead
+    enabled: false
+    tier: web
+    level_affinity: any
     max_results_per_query: 8
-    timeout_seconds: 30
+    timeout_seconds: 8
+    rate_limit_per_minute: 5
+    requires_api_key: false
+    domains:
+      - general
+    default_difficulty: mixed
+    source_type: documentation
+    beginner_friendly: false
+    research_level: false
 
   tavily:
-    enabled: false  # Disabled: API key returned 401 Unauthorized
+    enabled: false
+    tier: web
+    level_affinity: any
     max_results_per_query: 8
     timeout_seconds: 15
+    rate_limit_per_minute: 10
+    requires_api_key: true
+    api_key_setting: tavily_api_key
+    domains:
+      - general
+    default_difficulty: mixed
+    source_type: documentation
+    beginner_friendly: false
+    research_level: false
 
   exa:
-    enabled: true
+    enabled: false
+    tier: web
+    level_affinity: any
     max_results_per_query: 8
-    timeout_seconds: 30
+    timeout_seconds: 8
     rate_limit_per_minute: 10
-
-  core:
-    enabled: true
-    max_results_per_query: 10
-    timeout_seconds: 30
-    rate_limit_per_minute: 10
+    requires_api_key: true
+    api_key_setting: exa_api_key
+    domains:
+      - general
+    default_difficulty: mixed
+    source_type: documentation
+    beginner_friendly: false
+    research_level: false
 
   serper:
-    enabled: true
+    enabled: false
+    tier: web
+    level_affinity: any
     max_results_per_query: 8
-    timeout_seconds: 30
+    timeout_seconds: 8
     rate_limit_per_minute: 10
+    requires_api_key: true
+    api_key_setting: serper_api_key
+    domains:
+      - general
+    default_difficulty: mixed
+    source_type: documentation
+    beginner_friendly: false
+    research_level: false
 
   serpapi:
-    enabled: false  # Disabled: Timed out in API checker
+    enabled: false
+    tier: web
+    level_affinity: any
     max_results_per_query: 8
     timeout_seconds: 15
+    rate_limit_per_minute: 10
+    requires_api_key: true
+    api_key_setting: serpapi_api_key
+    domains:
+      - general
+    default_difficulty: mixed
+    source_type: documentation
+    beginner_friendly: false
+    research_level: false
 
   jina:
-    enabled: false  # Disabled: Timed out in API checker
+    enabled: false
+    tier: web
+    level_affinity: any
     max_results_per_query: 5
     timeout_seconds: 15
+    rate_limit_per_minute: 20
+    requires_api_key: true
+    api_key_setting: jina_api_key
+    domains:
+      - general
+    default_difficulty: mixed
+    source_type: documentation
+    beginner_friendly: false
+    research_level: false
 
 fetch:
   concurrency: 6
-  max_query_variants: 5
-  request_timeout_seconds: 30  # Reduced from 45 to fail fast on bad platforms
+  max_query_variants: 3
+  request_timeout_seconds: 12
   max_retries: 2
   retry_backoff_seconds: 1
+
+llm_relevance:
+  enabled: true
+  batch_size: 10
+  max_sources_to_judge: 40
+  min_sources_required: 3
+  provider_tier: fast
+  temperature: 0.0
+  max_tokens: 2048
+  model_limit: 3

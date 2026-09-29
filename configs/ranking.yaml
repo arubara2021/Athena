@@ -17,8 +17,8 @@ classifier:
   content:
     weight_paper: 2.6
     weight_other: 1.1
-    beginner_max_complexity: 0.35
-    intermediate_max_complexity: 0.62
+    beginner_max_complexity: 0.32
+    intermediate_max_complexity: 0.55
     fog_min: 6.0
     fog_max: 18.0
     fog_weight: 0.6
@@ -29,39 +29,169 @@ classifier:
     beginner_weight: 1.1
     intermediate_weight: 0.3
     max_points: 3
+  title_promotion:
+    enabled: true
+    confidence_floor: 0.75
+    starts_advanced:
+      - advanced
+      - graduate
+      - postgraduate
+    advanced_qualifiers:
+      - mechanism
+      - mechanisms
+      - reaction
+      - reactions
+      - synthesis
+      - syntheses
+      - structure
+      - structures
+      - theory
+      - analysis
+      - applications
+    beginner_phrases:
+      - introduction to
+      - intro to
+      - for beginners
+      - fundamentals of
+      - basics of
+      - getting started
+      - from scratch
+      - step by step
+      - beginner's guide
+      - made easy
+      - basics
+      - basic
+      - fundamentals
+      - introductory
+  distribution_guard:
+    enabled: true
+    trigger_advanced_ratio: 0.50
+    demote_advanced_max_treatment: 0.45
+    demote_intermediate_max_treatment: 0.30
+    demote_intermediate_max_topic: 0.50
+    require_beginner_in_level: true
 
 confidence:
   base: 0.40
   margin_factor: 0.40
   max: 0.95
-  source_type_bonus:
-    documentation:  { beginner: 1.2, intermediate: 0.4 }
-    course:         { beginner: 1.6, intermediate: 0.3 }
-    video:          { beginner: 1.0, intermediate: 0.4 }
-    blog:           { beginner: 0.8, intermediate: 0.4 }
-    repository:     { beginner: 0.0, intermediate: 1.4 }
-    model:          { beginner: 0.0, intermediate: 1.0 }
-    dataset:        { beginner: 0.0, intermediate: 0.8 }
-    research_paper: { beginner: 0.0, intermediate: 0.2 }
-  platform_bonus:
-    wikipedia:    { beginner: 0.5, intermediate: 0.4 }
-    github:       { beginner: 0.0, intermediate: 0.8 }
-    huggingface:  { beginner: 0.0, intermediate: 0.5 }
+
+source_type_bonus:
+  documentation:
+    beginner: 1.2
+    intermediate: 0.4
+    advanced: 0.2
+  course:
+    beginner: 1.6
+    intermediate: 0.3
+    advanced: 0.1
+  video:
+    beginner: 1.0
+    intermediate: 0.4
+    advanced: 0.2
+  blog:
+    beginner: 0.8
+    intermediate: 0.4
+    advanced: 0.1
+  repository:
+    beginner: 0.0
+    intermediate: 1.4
+    advanced: 1.2
+  model:
+    beginner: 0.0
+    intermediate: 1.0
+    advanced: 1.2
+  dataset:
+    beginner: 0.0
+    intermediate: 0.6
+    advanced: 1.0
+  research_paper:
+    beginner: 0.0
+    intermediate: 0.2
+    advanced: 1.0
+  book:
+    beginner: 0.6
+    intermediate: 0.6
+    advanced: 0.5
+
+platform_bonus:
+  wikipedia:
+    beginner: 0.5
+    intermediate: 0.4
+    advanced: 0.2
+  github:
+    beginner: 0.0
+    intermediate: 0.8
+    advanced: 1.0
+  huggingface:
+    beginner: 0.0
+    intermediate: 0.5
+    advanced: 1.0
+  open_library:
+    beginner: 1.5
+    intermediate: 0.6
+    advanced: 0.2
+  internet_archive:
+    beginner: 1.2
+    intermediate: 0.5
+    advanced: 0.3
+  wikibooks:
+    beginner: 1.6
+    intermediate: 0.5
+    advanced: 0.2
+  openstax:
+    beginner: 1.8
+    intermediate: 0.7
+    advanced: 0.3
+  mit_ocw:
+    beginner: 1.4
+    intermediate: 0.8
+    advanced: 0.5
+  libretexts:
+    beginner: 1.5
+    intermediate: 0.6
+    advanced: 0.3
+  wikiversity:
+    beginner: 1.4
+    intermediate: 0.6
+    advanced: 0.3
+  pubmed:
+    beginner: 0.1
+    intermediate: 0.6
+    advanced: 1.0
+  europe_pmc:
+    beginner: 0.1
+    intermediate: 0.6
+    advanced: 1.0
+  doaj:
+    beginner: 0.1
+    intermediate: 0.5
+    advanced: 1.0
+  crossref:
+    beginner: 0.1
+    intermediate: 0.5
+    advanced: 1.0
+  zenodo:
+    beginner: 0.1
+    intermediate: 0.2
+    advanced: 0.5
 
 alignment:
-  cap: 0.50
+  cap: 0.30
   beginner_request:
     difficulty:
-      beginner: 0.30
-      intermediate: 0.05
-      advanced: -0.40
+      beginner: 0.20
+      intermediate: 0.06
+      advanced: -0.24
     source_type:
-      documentation: 0.25
-      course: 0.25
-      video: 0.20
-      blog: 0.10
-      repository: 0.10
-      research_paper: -0.15
+      documentation: 0.10
+      course: 0.10
+      video: 0.10
+      blog: 0.05
+      research_paper: -0.06
+      book: 0.15
+      repository: 0.03
+      model: 0.02
   advanced_request:
     difficulty:
       advanced: 0.12
@@ -69,14 +199,36 @@ alignment:
       beginner: -0.10
     source_type:
       research_paper: 0.05
+      book: 0.02
+      repository: 0.05
+      model: 0.05
 
 consensus:
-  max_models: 3
-  max_llm_sources: 20
-  judge_max_attempts: 2
-  min_votes_for_judge: 2
+  max_models: 1
+  max_llm_sources: 10
+  judge_max_attempts: 1
+  min_votes_for_judge: 3
   min_relevance_score: 0.20
-  min_llm_score: 0.05
+  min_llm_score: 0.15
+  quality_floor:
+    enabled: true
+    min_score: 0.10
+    min_sources: 3
+    mode: adaptive
+    band_ratio: 0.35
+  relevance_retention:
+    ratio: 0.65
+    absolute_floor: 0.05
+  topic_presence:
+    enabled: true
+    min_overlap: 1
+    min_coverage: 0.05
+    allow_beginner_exemption: true
+  beginner_rescue:
+    enabled: true
+    max_rescues: 3
+    min_score_ratio: 0.55
+    min_relevance: 0.15
 
 learning_path:
   floor_min: 0.30

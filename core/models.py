@@ -1,8 +1,11 @@
 from __future__ import annotations
+
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
+
 from pydantic import BaseModel, ConfigDict, Field
+
 
 class ProviderName(str, Enum):
     SAMBANOVA = "SAMBANOVA"
@@ -10,6 +13,7 @@ class ProviderName(str, Enum):
     GOOGLE = "GOOGLE"
     MISTRAL = "MISTRAL"
     NVIDIA = "NVIDIA"
+
 
 class SourcePlatform(str, Enum):
     ARXIV = "arxiv"
@@ -25,6 +29,22 @@ class SourcePlatform(str, Enum):
     SERPER = "serper"
     SERPAPI = "serpapi"
     JINA = "jina"
+    PUBMED = "pubmed"
+    EUROPE_PMC = "europe_pmc"
+    DOAJ = "doaj"
+    CROSSREF = "crossref"
+    OPEN_LIBRARY = "open_library"
+    INTERNET_ARCHIVE = "internet_archive"
+    WIKIBOOKS = "wikibooks"
+    OPENSTAX = "openstax"
+    MIT_OCW = "mit_ocw"
+    LIBRETEXTS = "libretexts"
+    WIKIVERSITY = "wikiversity"
+    ZENODO = "zenodo"
+    DATACITE = "datacite"
+    STACK_EXCHANGE = "stack_exchange"
+    HACKER_NEWS = "hacker_news"
+
 
 class SourceType(str, Enum):
     PAPER = "research_paper"
@@ -35,7 +55,9 @@ class SourceType(str, Enum):
     DOCUMENTATION = "documentation"
     DATASET = "dataset"
     MODEL = "model"
+    BOOK = "book"
     OTHER = "other"
+
 
 class Difficulty(str, Enum):
     BEGINNER = "beginner"
@@ -47,11 +69,15 @@ class Difficulty(str, Enum):
     def _missing_(cls, value: object) -> "Difficulty | None":
         if isinstance(value, str):
             val = value.strip().lower()
+
             for member in cls:
                 if member.value == val:
                     return member
+
             return cls.UNKNOWN
+
         return None
+
 
 class ModelRole(str, Enum):
     PRIMARY_FAST = "primary_fast"
@@ -62,11 +88,13 @@ class ModelRole(str, Enum):
     CODE = "code"
     EMBEDDING = "embedding"
 
+
 class VotingMode(str, Enum):
     MAJORITY = "majority"
     WEIGHTED = "weighted"
     UNANIMOUS = "unanimous"
     JUDGE = "judge"
+
 
 class TaskStatus(str, Enum):
     PENDING = "pending"
@@ -74,6 +102,7 @@ class TaskStatus(str, Enum):
     SUCCESS = "success"
     FAILED = "failed"
     PARTIAL = "partial"
+
 
 class AgentStatus(str, Enum):
     IDLE = "idle"
@@ -85,8 +114,10 @@ class AgentStatus(str, Enum):
     REFLECTING = "reflecting"
     SYNTHESIZING = "synthesizing"
     COMPLETED = "completed"
+    SUCCESS = "success"
     FAILED = "failed"
     BUDGET_EXHAUSTED = "budget_exhausted"
+
 
 class AgentActionType(str, Enum):
     SEARCH = "search"
@@ -100,11 +131,55 @@ class AgentActionType(str, Enum):
     MEMORY_RECALL = "memory_recall"
     NO_OP = "no_op"
 
+
+def resolve_source_platform(value: Any) -> SourcePlatform:
+    if isinstance(value, SourcePlatform):
+        return value
+
+    if value is None:
+        raise ValueError("Source platform value cannot be None")
+
+    text = str(value).strip().lower()
+
+    if not text:
+        raise ValueError("Source platform value cannot be empty")
+
+    try:
+        return SourcePlatform(text)
+    except ValueError as exc:
+        valid_values = ", ".join(item.value for item in SourcePlatform)
+        raise ValueError(
+            f"Unknown source platform: {text!r}. Valid values: {valid_values}"
+        ) from exc
+
+
+def resolve_source_type(value: Any) -> SourceType:
+    if isinstance(value, SourceType):
+        return value
+
+    if value is None:
+        raise ValueError("Source type value cannot be None")
+
+    text = str(value).strip().lower()
+
+    if not text:
+        raise ValueError("Source type value cannot be empty")
+
+    try:
+        return SourceType(text)
+    except ValueError as exc:
+        valid_values = ", ".join(item.value for item in SourceType)
+        raise ValueError(
+            f"Unknown source type: {text!r}. Valid values: {valid_values}"
+        ) from exc
+
+
 class CoreModel(BaseModel):
     model_config = ConfigDict(
         validate_assignment=True,
         extra="ignore",
     )
+
 
 class ProviderHealth(CoreModel):
     provider: ProviderName
@@ -116,12 +191,14 @@ class ProviderHealth(CoreModel):
     latency_ms: float | None = None
     checked_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+
 class ModelReference(CoreModel):
     provider: ProviderName
     model_id: str
     role: ModelRole = ModelRole.FALLBACK_FAST
     priority: int = Field(default=100, ge=0)
     weight: float = Field(default=1.0, ge=0.0)
+
 
 class Source(CoreModel):
     source_id: str
@@ -138,7 +215,10 @@ class Source(CoreModel):
     has_code: bool | None = None
     difficulty: Difficulty | None = None
     score: float | None = None
+    domain: str | None = None
+    topic: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
+
 
 class RankedSource(CoreModel):
     source: Source
@@ -147,6 +227,7 @@ class RankedSource(CoreModel):
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
     reason: str | None = None
 
+
 class LearningStep(CoreModel):
     step: int = Field(ge=1)
     title: str
@@ -154,12 +235,14 @@ class LearningStep(CoreModel):
     estimated_minutes: int | None = None
     resources: list[RankedSource] = Field(default_factory=list)
 
+
 class LearningPath(CoreModel):
     topic: str
     level: str
     goal: str | None = None
     steps: list[LearningStep] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 
 class EnsembleVote(CoreModel):
     provider: ProviderName
@@ -169,6 +252,7 @@ class EnsembleVote(CoreModel):
     success: bool = False
     error: str | None = None
 
+
 class ConsensusResult(CoreModel):
     final_output: Any = None
     agreement_score: float = Field(default=0.0, ge=0.0, le=1.0)
@@ -177,6 +261,7 @@ class ConsensusResult(CoreModel):
     reasoning: str | None = None
     judge_used: bool = False
 
+
 class PipelineMetrics(CoreModel):
     total_sources_found: int = 0
     total_sources_after_dedupe: int = 0
@@ -184,6 +269,7 @@ class PipelineMetrics(CoreModel):
     llm_calls: int = 0
     failed_llm_calls: int = 0
     total_latency_ms: float = 0.0
+
 
 class ToolCall(CoreModel):
     call_id: str
@@ -197,6 +283,7 @@ class ToolCall(CoreModel):
     error: str | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+
 class AgentAction(CoreModel):
     action_id: str
     step_index: int = Field(default=0, ge=0)
@@ -207,6 +294,7 @@ class AgentAction(CoreModel):
     tokens_used: int = 0
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+
 class PlanStep(CoreModel):
     step_index: int = Field(ge=0)
     description: str
@@ -216,6 +304,7 @@ class PlanStep(CoreModel):
     status: AgentStatus = AgentStatus.IDLE
     completed: bool = False
 
+
 class AgentPlan(CoreModel):
     plan_id: str
     goal: str
@@ -223,6 +312,7 @@ class AgentPlan(CoreModel):
     total_estimated_tokens: int = Field(default=0, ge=0)
     budget_allocated: int = Field(default=0, ge=0)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 
 class ReflectionResult(CoreModel):
     iteration: int = Field(default=0, ge=0)
@@ -235,6 +325,7 @@ class ReflectionResult(CoreModel):
     tokens_used: int = 0
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+
 class MemoryEntry(CoreModel):
     entry_id: str
     memory_type: str = "episodic"
@@ -246,6 +337,7 @@ class MemoryEntry(CoreModel):
     access_count: int = Field(default=0, ge=0)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     last_accessed_at: datetime | None = None
+
 
 class AgentState(CoreModel):
     agent_id: str

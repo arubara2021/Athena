@@ -13,10 +13,6 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _DEFAULT_CONFIG_PATH = _PROJECT_ROOT / "configs" / "ranking.yaml"
 
 
-# ════════════════════════════════════════════════════════════════════════════
-# In-code defaults. The app behaves identically to these when ranking.yaml is
-# missing, malformed, or only partially filled.
-# ════════════════════════════════════════════════════════════════════════════
 _DEFAULTS: dict[str, Any] = {
     "scorer": {
         "weights": {
@@ -88,13 +84,29 @@ _DEFAULTS: dict[str, Any] = {
         "max_llm_sources": 20,
         "judge_max_attempts": 2,
         "min_votes_for_judge": 2,
+        "min_relevance_score": 0.30,
+        "min_llm_score": 0.35,
+        "quality_floor": {
+            "enabled": True,
+            "min_score": 0.20,
+            "min_sources": 3,
+            "mode": "adaptive",
+        },
+        "topic_presence": {
+            "enabled": True,
+            "min_overlap": 1,
+            "min_coverage": 0.20,
+            "allow_beginner_exemption": True,
+        },
+        "beginner_rescue": {
+            "enabled": True,
+            "max_rescues": 2,
+            "min_score_ratio": 0.60,
+        },
     },
 }
 
 
-# ════════════════════════════════════════════════════════════════════════════
-# Typed models returned by the accessors
-# ════════════════════════════════════════════════════════════════════════════
 @dataclass(frozen=True)
 class ScorerWeights:
     relevance: float
@@ -142,16 +154,41 @@ class AlignmentSettings:
 
 
 @dataclass(frozen=True)
+class QualityFloorSettings:
+    enabled: bool
+    min_score: float
+    min_sources: int
+    mode: str
+
+
+@dataclass(frozen=True)
+class TopicPresenceSettings:
+    enabled: bool
+    min_overlap: int
+    min_coverage: float
+    allow_beginner_exemption: bool
+
+
+@dataclass(frozen=True)
+class BeginnerRescueSettings:
+    enabled: bool
+    max_rescues: int
+    min_score_ratio: float
+
+
+@dataclass(frozen=True)
 class ConsensusSettings:
     max_models: int
     max_llm_sources: int
     judge_max_attempts: int
     min_votes_for_judge: int
+    min_relevance_score: float
+    min_llm_score: float
+    quality_floor: QualityFloorSettings
+    topic_presence: TopicPresenceSettings
+    beginner_rescue: BeginnerRescueSettings
 
 
-# ════════════════════════════════════════════════════════════════════════════
-# Safe extraction helpers — never raise, always coerce or fall back
-# ════════════════════════════════════════════════════════════════════════════
 def _get_nested(data: Any, *keys: str, default: Any = None) -> Any:
     current = data
     for key in keys:
@@ -173,6 +210,20 @@ def _as_int(value: Any, default: int) -> int:
         return int(value)
     except (TypeError, ValueError):
         return default
+
+
+def _as_bool(value: Any, default: bool) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    if isinstance(value, str):
+        text = value.strip().lower()
+        if text in {"true", "yes", "on", "1"}:
+            return True
+        if text in {"false", "no", "off", "0"}:
+            return False
+    return default
 
 
 def _as_dict(value: Any, default: dict | None = None) -> dict:
@@ -213,9 +264,6 @@ def _merge_bonus_map(default: dict, override: Any) -> dict[str, dict[str, float]
     return merged
 
 
-# ════════════════════════════════════════════════════════════════════════════
-# RankingConfig
-# ════════════════════════════════════════════════════════════════════════════
 class RankingConfig:
     def __init__(self, config_path: str | Path | None = None) -> None:
         self._config_path = (
@@ -231,7 +279,6 @@ class RankingConfig:
     def config_path(self) -> Path:
         return self._config_path
 
-    # ── Typed accessors ─────────────────────────────────────────────────────
     def scorer_weights(self) -> ScorerWeights:
         return self._scorer
 
@@ -244,7 +291,6 @@ class RankingConfig:
     def consensus_settings(self) -> ConsensusSettings:
         return self._consensus
 
-    # ── Loading ─────────────────────────────────────────────────────────────
     def _load(self) -> dict:
         defaults = copy.deepcopy(_DEFAULTS)
         raw = self._read_yaml()
@@ -255,13 +301,16 @@ class RankingConfig:
             _logger.info(f"Loaded ranking config: {self._config_path}")
             return merged
         except Exception as exc:
-            _logger.warning(f"Failed to merge ranking config, using defaults: {exc}")
+            _logger.warning(
+                f"Failed to merge ranking config, using defaults: {exc}"
+            )
             return defaults
 
     def _read_yaml(self) -> dict:
         if not self._config_path.exists():
             _logger.info(
-                f"No ranking config at {self._config_path}, using built-in defaults"
+                f"No ranking config at {self._config_path}, "
+                f"using built-in defaults"
             )
             return {}
         try:
@@ -285,9 +334,10 @@ class RankingConfig:
             )
             return {}
 
-    # ── Builders ────────────────────────────────────────────────────────────
     def _build_scorer(self) -> ScorerWeights:
-        section = _as_dict(_get_nested(self._data, "scorer", "weights", default={}))
+        section = _as_dict(
+            _get_nested(self._data, "scorer", "weights", default={})
+        )
         d = _DEFAULTS["scorer"]["weights"]
         return ScorerWeights(
             relevance=_as_float(section.get("relevance"), d["relevance"]),
@@ -302,65 +352,259 @@ class RankingConfig:
 
     def _build_classifier(self) -> ClassifierWeights:
         d = _DEFAULTS["classifier"]
-        kw = _as_dict(_get_nested(self._data, "classifier", "keyword_weights", default={}))
-        ct = _as_dict(_get_nested(self._data, "classifier", "content", default={}))
-        intro = _as_dict(_get_nested(self._data, "classifier", "intro_phrasing", default={}))
-        conf = _as_dict(_get_nested(self._data, "classifier", "confidence", default={}))
-        stb = _get_nested(self._data, "classifier", "source_type_bonus", default={})
-        pb = _get_nested(self._data, "classifier", "platform_bonus", default={})
+        kw = _as_dict(
+            _get_nested(
+                self._data,
+                "classifier",
+                "keyword_weights",
+                default={},
+            )
+        )
+        ct = _as_dict(
+            _get_nested(self._data, "classifier", "content", default={})
+        )
+        intro = _as_dict(
+            _get_nested(
+                self._data,
+                "classifier",
+                "intro_phrasing",
+                default={},
+            )
+        )
+        conf = _as_dict(
+            _get_nested(
+                self._data,
+                "classifier",
+                "confidence",
+                default={},
+            )
+        )
+        stb = _get_nested(
+            self._data,
+            "classifier",
+            "source_type_bonus",
+            default={},
+        )
+        pb = _get_nested(
+            self._data,
+            "classifier",
+            "platform_bonus",
+            default={},
+        )
         return ClassifierWeights(
-            keyword_beginner=_as_float(kw.get("beginner"), d["keyword_weights"]["beginner"]),
-            keyword_intermediate=_as_float(kw.get("intermediate"), d["keyword_weights"]["intermediate"]),
-            keyword_advanced=_as_float(kw.get("advanced"), d["keyword_weights"]["advanced"]),
-            content_weight_paper=_as_float(ct.get("weight_paper"), d["content"]["weight_paper"]),
-            content_weight_other=_as_float(ct.get("weight_other"), d["content"]["weight_other"]),
-            beginner_max_complexity=_as_float(ct.get("beginner_max_complexity"), d["content"]["beginner_max_complexity"]),
-            intermediate_max_complexity=_as_float(ct.get("intermediate_max_complexity"), d["content"]["intermediate_max_complexity"]),
+            keyword_beginner=_as_float(
+                kw.get("beginner"), d["keyword_weights"]["beginner"]
+            ),
+            keyword_intermediate=_as_float(
+                kw.get("intermediate"), d["keyword_weights"]["intermediate"]
+            ),
+            keyword_advanced=_as_float(
+                kw.get("advanced"), d["keyword_weights"]["advanced"]
+            ),
+            content_weight_paper=_as_float(
+                ct.get("weight_paper"), d["content"]["weight_paper"]
+            ),
+            content_weight_other=_as_float(
+                ct.get("weight_other"), d["content"]["weight_other"]
+            ),
+            beginner_max_complexity=_as_float(
+                ct.get("beginner_max_complexity"),
+                d["content"]["beginner_max_complexity"],
+            ),
+            intermediate_max_complexity=_as_float(
+                ct.get("intermediate_max_complexity"),
+                d["content"]["intermediate_max_complexity"],
+            ),
             fog_min=_as_float(ct.get("fog_min"), d["content"]["fog_min"]),
             fog_max=_as_float(ct.get("fog_max"), d["content"]["fog_max"]),
-            fog_weight=_as_float(ct.get("fog_weight"), d["content"]["fog_weight"]),
-            jargon_weight=_as_float(ct.get("jargon_weight"), d["content"]["jargon_weight"]),
-            jargon_density_cap=_as_float(ct.get("jargon_density_cap"), d["content"]["jargon_density_cap"]),
-            complex_word_syllables=_as_int(ct.get("complex_word_syllables"), d["content"]["complex_word_syllables"]),
-            intro_beginner_weight=_as_float(intro.get("beginner_weight"), d["intro_phrasing"]["beginner_weight"]),
-            intro_intermediate_weight=_as_float(intro.get("intermediate_weight"), d["intro_phrasing"]["intermediate_weight"]),
-            intro_max_points=_as_int(intro.get("max_points"), d["intro_phrasing"]["max_points"]),
-            confidence_base=_as_float(conf.get("base"), d["confidence"]["base"]),
-            confidence_margin_factor=_as_float(conf.get("margin_factor"), d["confidence"]["margin_factor"]),
-            confidence_max=_as_float(conf.get("max"), d["confidence"]["max"]),
-            source_type_bonus=_merge_bonus_map(d["source_type_bonus"], stb),
+            fog_weight=_as_float(
+                ct.get("fog_weight"), d["content"]["fog_weight"]
+            ),
+            jargon_weight=_as_float(
+                ct.get("jargon_weight"), d["content"]["jargon_weight"]
+            ),
+            jargon_density_cap=_as_float(
+                ct.get("jargon_density_cap"),
+                d["content"]["jargon_density_cap"],
+            ),
+            complex_word_syllables=_as_int(
+                ct.get("complex_word_syllables"),
+                d["content"]["complex_word_syllables"],
+            ),
+            intro_beginner_weight=_as_float(
+                intro.get("beginner_weight"),
+                d["intro_phrasing"]["beginner_weight"],
+            ),
+            intro_intermediate_weight=_as_float(
+                intro.get("intermediate_weight"),
+                d["intro_phrasing"]["intermediate_weight"],
+            ),
+            intro_max_points=_as_int(
+                intro.get("max_points"),
+                d["intro_phrasing"]["max_points"],
+            ),
+            confidence_base=_as_float(
+                conf.get("base"), d["confidence"]["base"]
+            ),
+            confidence_margin_factor=_as_float(
+                conf.get("margin_factor"),
+                d["confidence"]["margin_factor"],
+            ),
+            confidence_max=_as_float(
+                conf.get("max"), d["confidence"]["max"]
+            ),
+            source_type_bonus=_merge_bonus_map(
+                d["source_type_bonus"], stb
+            ),
             platform_bonus=_merge_bonus_map(d["platform_bonus"], pb),
         )
 
     def _build_alignment(self) -> AlignmentSettings:
         d = _DEFAULTS["alignment"]
-        cap = _as_float(_get_nested(self._data, "alignment", "cap"), d["cap"])
-        beg_diff = _get_nested(self._data, "alignment", "beginner_request", "difficulty", default={})
-        beg_st = _get_nested(self._data, "alignment", "beginner_request", "source_type", default={})
-        adv_diff = _get_nested(self._data, "alignment", "advanced_request", "difficulty", default={})
-        adv_st = _get_nested(self._data, "alignment", "advanced_request", "source_type", default={})
+        cap = _as_float(
+            _get_nested(self._data, "alignment", "cap"), d["cap"]
+        )
+        beg_diff = _get_nested(
+            self._data,
+            "alignment",
+            "beginner_request",
+            "difficulty",
+            default={},
+        )
+        beg_st = _get_nested(
+            self._data,
+            "alignment",
+            "beginner_request",
+            "source_type",
+            default={},
+        )
+        adv_diff = _get_nested(
+            self._data,
+            "alignment",
+            "advanced_request",
+            "difficulty",
+            default={},
+        )
+        adv_st = _get_nested(
+            self._data,
+            "alignment",
+            "advanced_request",
+            "source_type",
+            default={},
+        )
         return AlignmentSettings(
             cap=cap,
-            beginner_difficulty=_merge_float_map(d["beginner_request"]["difficulty"], beg_diff),
-            beginner_source_type=_merge_float_map(d["beginner_request"]["source_type"], beg_st),
-            advanced_difficulty=_merge_float_map(d["advanced_request"]["difficulty"], adv_diff),
-            advanced_source_type=_merge_float_map(d["advanced_request"]["source_type"], adv_st),
+            beginner_difficulty=_merge_float_map(
+                d["beginner_request"]["difficulty"], beg_diff
+            ),
+            beginner_source_type=_merge_float_map(
+                d["beginner_request"]["source_type"], beg_st
+            ),
+            advanced_difficulty=_merge_float_map(
+                d["advanced_request"]["difficulty"], adv_diff
+            ),
+            advanced_source_type=_merge_float_map(
+                d["advanced_request"]["source_type"], adv_st
+            ),
         )
 
     def _build_consensus(self) -> ConsensusSettings:
         d = _DEFAULTS["consensus"]
-        section = _as_dict(_get_nested(self._data, "consensus", default={}))
+        section = _as_dict(
+            _get_nested(self._data, "consensus", default={})
+        )
+
+        quality_section = _as_dict(
+            section.get("quality_floor", d["quality_floor"])
+        )
+        quality_floor = QualityFloorSettings(
+            enabled=_as_bool(
+                quality_section.get("enabled"),
+                d["quality_floor"]["enabled"],
+            ),
+            min_score=_as_float(
+                quality_section.get("min_score"),
+                d["quality_floor"]["min_score"],
+            ),
+            min_sources=_as_int(
+                quality_section.get("min_sources"),
+                d["quality_floor"]["min_sources"],
+            ),
+            mode=str(
+                quality_section.get("mode")
+                or d["quality_floor"]["mode"]
+            ).strip().lower(),
+        )
+
+        topic_section = _as_dict(
+            section.get("topic_presence", d["topic_presence"])
+        )
+        topic_presence = TopicPresenceSettings(
+            enabled=_as_bool(
+                topic_section.get("enabled"),
+                d["topic_presence"]["enabled"],
+            ),
+            min_overlap=_as_int(
+                topic_section.get("min_overlap"),
+                d["topic_presence"]["min_overlap"],
+            ),
+            min_coverage=_as_float(
+                topic_section.get("min_coverage"),
+                d["topic_presence"]["min_coverage"],
+            ),
+            allow_beginner_exemption=_as_bool(
+                topic_section.get("allow_beginner_exemption"),
+                d["topic_presence"]["allow_beginner_exemption"],
+            ),
+        )
+
+        rescue_section = _as_dict(
+            section.get("beginner_rescue", d["beginner_rescue"])
+        )
+        beginner_rescue = BeginnerRescueSettings(
+            enabled=_as_bool(
+                rescue_section.get("enabled"),
+                d["beginner_rescue"]["enabled"],
+            ),
+            max_rescues=_as_int(
+                rescue_section.get("max_rescues"),
+                d["beginner_rescue"]["max_rescues"],
+            ),
+            min_score_ratio=_as_float(
+                rescue_section.get("min_score_ratio"),
+                d["beginner_rescue"]["min_score_ratio"],
+            ),
+        )
+
         return ConsensusSettings(
-            max_models=_as_int(section.get("max_models"), d["max_models"]),
-            max_llm_sources=_as_int(section.get("max_llm_sources"), d["max_llm_sources"]),
-            judge_max_attempts=_as_int(section.get("judge_max_attempts"), d["judge_max_attempts"]),
-            min_votes_for_judge=_as_int(section.get("min_votes_for_judge"), d["min_votes_for_judge"]),
+            max_models=_as_int(
+                section.get("max_models"), d["max_models"]
+            ),
+            max_llm_sources=_as_int(
+                section.get("max_llm_sources"), d["max_llm_sources"]
+            ),
+            judge_max_attempts=_as_int(
+                section.get("judge_max_attempts"),
+                d["judge_max_attempts"],
+            ),
+            min_votes_for_judge=_as_int(
+                section.get("min_votes_for_judge"),
+                d["min_votes_for_judge"],
+            ),
+            min_relevance_score=_as_float(
+                section.get("min_relevance_score"),
+                d["min_relevance_score"],
+            ),
+            min_llm_score=_as_float(
+                section.get("min_llm_score"),
+                d["min_llm_score"],
+            ),
+            quality_floor=quality_floor,
+            topic_presence=topic_presence,
+            beginner_rescue=beginner_rescue,
         )
 
 
-# ════════════════════════════════════════════════════════════════════════════
-# Module-level singleton
-# ════════════════════════════════════════════════════════════════════════════
 _instance: RankingConfig | None = None
 
 

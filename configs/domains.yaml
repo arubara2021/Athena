@@ -1,0 +1,1015 @@
+version: 1
+
+defaults:
+  max_domains: 4
+  min_domain_confidence: 0.25
+  max_formats: 6
+  universal_platforms:
+    - arxiv
+    - openalex
+    - crossref
+    - doaj
+    - europe_pmc
+    - pubmed
+    - zenodo
+    - wikipedia
+    - open_library
+    - internet_archive
+    - wikibooks
+    - openstax
+    - libretexts
+    - wikiversity
+    - mit_ocw
+    - github
+    - huggingface
+  beginner_formats:
+    - course
+    - book
+    - documentation
+    - video
+    - research_paper
+  intermediate_formats:
+    - documentation
+    - course
+    - book
+    - research_paper
+    - repository
+  advanced_formats:
+    - research_paper
+    - repository
+    - model
+    - dataset
+    - documentation
+
+domains:
+  general:
+    label: General
+    priority: 100
+    aliases:
+      - general
+      - general knowledge
+      - overview
+    platforms:
+      - wikipedia
+      - open_library
+      - internet_archive
+      - wikibooks
+      - openstax
+      - libretexts
+      - wikiversity
+      - mit_ocw
+      - openalex
+      - crossref
+      - doaj
+    beginner_platforms:
+      - wikipedia
+      - openstax
+      - libretexts
+      - wikibooks
+      - wikiversity
+      - open_library
+      - internet_archive
+      - mit_ocw
+    intermediate_platforms:
+      - wikipedia
+      - openstax
+      - libretexts
+      - wikiversity
+      - open_library
+      - internet_archive
+      - openalex
+      - crossref
+      - doaj
+    advanced_platforms:
+      - openalex
+      - crossref
+      - doaj
+      - pubmed
+      - europe_pmc
+      - arxiv
+    formats:
+      - documentation
+      - course
+      - book
+      - research_paper
+    level_rules:
+      beginner:
+        boost_platforms:
+          - wikipedia
+          - openstax
+          - libretexts
+          - wikibooks
+          - wikiversity
+          - open_library
+          - internet_archive
+          - mit_ocw
+        suppress_platforms:
+          - arxiv
+          - pubmed
+          - europe_pmc
+          - crossref
+          - doaj
+          - openalex
+        min_beginner_sources: 3
+      intermediate:
+        boost_platforms:
+          - wikipedia
+          - openstax
+          - libretexts
+          - wikiversity
+          - open_library
+      advanced:
+        boost_platforms:
+          - openalex
+          - crossref
+          - doaj
+          - pubmed
+          - europe_pmc
+          - arxiv
+
+  education:
+    label: Education
+    priority: 20
+    aliases:
+      - education
+      - learn
+      - learning
+      - study
+      - studies
+      - course
+      - courses
+      - tutorial
+      - tutorials
+      - basics
+      - basic
+      - beginner
+      - fundamentals
+      - fundamental
+      - introduction
+      - intro
+      - textbook
+      - textbooks
+      - curriculum
+      - syllabus
+      - teaching
+      - teach
+      - guide
+      - roadmap
+      - step by step
+      - from scratch
+    platforms:
+      - openstax
+      - mit_ocw
+      - libretexts
+      - wikiversity
+      - wikibooks
+      - wikipedia
+      - open_library
+      - internet_archive
+    beginner_platforms:
+      - openstax
+      - mit_ocw
+      - libretexts
+      - wikiversity
+      - wikibooks
+      - wikipedia
+      - open_library
+      - internet_archive
+    intermediate_platforms:
+      - openstax
+      - libretexts
+      - wikiversity
+      - wikipedia
+      - open_library
+      - internet_archive
+    advanced_platforms:
+      - openalex
+      - crossref
+      - doaj
+    formats:
+      - course
+      - book
+      - documentation
+      - video
+      - research_paper
+    level_rules:
+      beginner:
+        boost_platforms:
+          - openstax
+          - mit_ocw
+          - libretexts
+          - wikiversity
+          - wikibooks
+          - wikipedia
+          - open_library
+          - internet_archive
+        suppress_platforms:
+          - arxiv
+          - pubmed
+          - europe_pmc
+          - crossref
+          - doaj
+          - openalex
+        min_beginner_sources: 4
+      intermediate:
+        boost_platforms:
+          - openstax
+          - libretexts
+          - wikiversity
+          - wikipedia
+      advanced:
+        boost_platforms:
+          - openalex
+          - crossref
+          - doaj
+
+  chemistry:
+    label: Chemistry
+    priority: 10
+    aliases:
+      - chemistry
+      - chemical
+      - organic chemistry
+      - organic
+      - inorganic chemistry
+      - inorganic
+      - physical chemistry
+      - analytical chemistry
+      - biochemistry
+      - molecule
+      - molecules
+      - reaction
+      - reactions
+      - periodic table
+      - chemical bonding
+      - stoichiometry
+      - acid base
+      - oxidation
+      - reduction
+      - catalyst
+      - catalysis
+    platforms:
+      - openstax
+      - libretexts
+      - wikibooks
+      - wikipedia
+      - wikiversity
+      - open_library
+      - internet_archive
+      - pubmed
+      - europe_pmc
+      - openalex
+      - crossref
+      - doaj
+      - arxiv
+    beginner_platforms:
+      - openstax
+      - libretexts
+      - wikibooks
+      - wikipedia
+      - wikiversity
+      - open_library
+      - internet_archive
+    intermediate_platforms:
+      - openstax
+      - libretexts
+      - wikipedia
+      - wikiversity
+      - open_library
+      - internet_archive
+      - openalex
+      - crossref
+      - doaj
+    advanced_platforms:
+      - pubmed
+      - europe_pmc
+      - openalex
+      - crossref
+      - doaj
+      - arxiv
+    formats:
+      - course
+      - book
+      - documentation
+      - video
+      - research_paper
+    level_rules:
+      beginner:
+        boost_platforms:
+          - openstax
+          - libretexts
+          - wikibooks
+          - wikipedia
+          - wikiversity
+          - open_library
+          - internet_archive
+        suppress_platforms:
+          - pubmed
+          - europe_pmc
+          - arxiv
+          - crossref
+          - doaj
+          - openalex
+        min_beginner_sources: 3
+      intermediate:
+        boost_platforms:
+          - openstax
+          - libretexts
+          - wikipedia
+          - wikiversity
+          - open_library
+      advanced:
+        boost_platforms:
+          - pubmed
+          - europe_pmc
+          - openalex
+          - crossref
+          - doaj
+          - arxiv
+
+  biology:
+    label: Biology
+    priority: 11
+    aliases:
+      - biology
+      - biological
+      - life science
+      - life sciences
+      - genetics
+      - genomics
+      - molecular biology
+      - cell biology
+      - microbiology
+      - neuroscience
+      - ecology
+      - evolution
+      - photosynthesis
+      - anatomy
+      - physiology
+    platforms:
+      - openstax
+      - libretexts
+      - wikibooks
+      - wikipedia
+      - wikiversity
+      - open_library
+      - internet_archive
+      - pubmed
+      - europe_pmc
+      - openalex
+      - crossref
+      - doaj
+    beginner_platforms:
+      - openstax
+      - libretexts
+      - wikibooks
+      - wikipedia
+      - wikiversity
+      - open_library
+      - internet_archive
+    intermediate_platforms:
+      - openstax
+      - libretexts
+      - wikipedia
+      - wikiversity
+      - open_library
+      - internet_archive
+      - openalex
+      - crossref
+      - doaj
+    advanced_platforms:
+      - pubmed
+      - europe_pmc
+      - openalex
+      - crossref
+      - doaj
+    formats:
+      - course
+      - book
+      - documentation
+      - video
+      - research_paper
+    level_rules:
+      beginner:
+        boost_platforms:
+          - openstax
+          - libretexts
+          - wikibooks
+          - wikipedia
+          - wikiversity
+          - open_library
+          - internet_archive
+        suppress_platforms:
+          - pubmed
+          - europe_pmc
+          - crossref
+          - doaj
+          - openalex
+        min_beginner_sources: 3
+      intermediate:
+        boost_platforms:
+          - openstax
+          - libretexts
+          - wikipedia
+          - wikiversity
+      advanced:
+        boost_platforms:
+          - pubmed
+          - europe_pmc
+          - openalex
+          - crossref
+          - doaj
+
+  medicine:
+    label: Medicine
+    priority: 12
+    aliases:
+      - medicine
+      - medical
+      - clinical
+      - health
+      - healthcare
+      - disease
+      - treatment
+      - therapy
+      - diagnosis
+      - pharmacology
+      - pharmaceutical
+      - diabetes
+      - cancer
+      - immunology
+    platforms:
+      - pubmed
+      - europe_pmc
+      - openalex
+      - crossref
+      - doaj
+      - wikipedia
+      - openstax
+      - libretexts
+      - wikiversity
+      - open_library
+      - internet_archive
+    beginner_platforms:
+      - wikipedia
+      - openstax
+      - libretexts
+      - wikiversity
+      - open_library
+      - internet_archive
+    intermediate_platforms:
+      - openstax
+      - libretexts
+      - wikipedia
+      - wikiversity
+      - open_library
+      - openalex
+      - crossref
+      - doaj
+    advanced_platforms:
+      - pubmed
+      - europe_pmc
+      - openalex
+      - crossref
+      - doaj
+    formats:
+      - course
+      - book
+      - documentation
+      - research_paper
+    level_rules:
+      beginner:
+        boost_platforms:
+          - wikipedia
+          - openstax
+          - libretexts
+          - wikiversity
+          - open_library
+          - internet_archive
+        suppress_platforms:
+          - pubmed
+          - europe_pmc
+          - crossref
+          - doaj
+          - openalex
+        min_beginner_sources: 3
+      intermediate:
+        boost_platforms:
+          - openstax
+          - libretexts
+          - wikipedia
+      advanced:
+        boost_platforms:
+          - pubmed
+          - europe_pmc
+          - openalex
+          - crossref
+          - doaj
+
+  computer_science:
+    label: Computer Science
+    priority: 13
+    aliases:
+      - computer science
+      - cs
+      - programming
+      - coding
+      - software
+      - algorithm
+      - algorithms
+      - data structure
+      - data structures
+      - machine learning
+      - ml
+      - deep learning
+      - artificial intelligence
+      - ai
+      - neural network
+      - neural networks
+      - transformer
+      - transformers
+      - mixture of experts
+      - moe
+      - llm
+      - large language model
+      - large language models
+      - information retrieval
+      - retrieval
+      - dense retrieval
+      - sparse retrieval
+      - passage retrieval
+      - document retrieval
+      - semantic search
+      - vector search
+      - vector database
+      - embeddings
+      - nearest neighbor
+      - approximate nearest neighbor
+      - faiss
+      - bm25
+      - reranking
+      - reranker
+      - retrieval augmented generation
+      - rag
+      - dense passage retrieval
+      - cross encoder
+      - bi encoder
+      - contrastive learning
+      - hard negative mining
+      - knowledge distillation
+    platforms:
+      - arxiv
+      - github
+      - huggingface
+      - openalex
+      - crossref
+      - doaj
+      - wikipedia
+      - libretexts
+      - openstax
+      - wikibooks
+      - wikiversity
+      - open_library
+      - internet_archive
+    beginner_platforms:
+      - wikipedia
+      - libretexts
+      - openstax
+      - wikibooks
+      - wikiversity
+      - open_library
+      - internet_archive
+    intermediate_platforms:
+      - wikipedia
+      - libretexts
+      - openstax
+      - github
+      - huggingface
+      - openalex
+      - crossref
+      - doaj
+    advanced_platforms:
+      - arxiv
+      - github
+      - huggingface
+      - openalex
+      - crossref
+      - doaj
+    formats:
+      - course
+      - book
+      - documentation
+      - repository
+      - model
+      - dataset
+      - research_paper
+    level_rules:
+      beginner:
+        boost_platforms:
+          - wikipedia
+          - libretexts
+          - openstax
+          - wikibooks
+          - wikiversity
+          - open_library
+          - internet_archive
+        suppress_platforms:
+          - arxiv
+          - openalex
+          - crossref
+          - doaj
+        min_beginner_sources: 3
+      intermediate:
+        boost_platforms:
+          - github
+          - huggingface
+          - libretexts
+          - wikipedia
+      advanced:
+        boost_platforms:
+          - arxiv
+          - github
+          - huggingface
+          - openalex
+          - crossref
+          - doaj
+
+  mathematics:
+    label: Mathematics
+    priority: 14
+    aliases:
+      - mathematics
+      - math
+      - maths
+      - algebra
+      - calculus
+      - geometry
+      - probability
+      - statistics
+      - linear algebra
+      - differential equations
+      - optimization
+      - discrete mathematics
+    platforms:
+      - arxiv
+      - openalex
+      - crossref
+      - doaj
+      - wikipedia
+      - libretexts
+      - openstax
+      - wikibooks
+      - wikiversity
+      - open_library
+      - internet_archive
+    beginner_platforms:
+      - openstax
+      - libretexts
+      - wikibooks
+      - wikipedia
+      - wikiversity
+      - open_library
+      - internet_archive
+    intermediate_platforms:
+      - openstax
+      - libretexts
+      - wikipedia
+      - wikiversity
+      - open_library
+      - openalex
+      - crossref
+      - doaj
+    advanced_platforms:
+      - arxiv
+      - openalex
+      - crossref
+      - doaj
+    formats:
+      - course
+      - book
+      - documentation
+      - research_paper
+    level_rules:
+      beginner:
+        boost_platforms:
+          - openstax
+          - libretexts
+          - wikibooks
+          - wikipedia
+          - wikiversity
+          - open_library
+          - internet_archive
+        suppress_platforms:
+          - arxiv
+          - openalex
+          - crossref
+          - doaj
+        min_beginner_sources: 3
+      intermediate:
+        boost_platforms:
+          - openstax
+          - libretexts
+          - wikipedia
+      advanced:
+        boost_platforms:
+          - arxiv
+          - openalex
+          - crossref
+          - doaj
+
+  physics:
+    label: Physics
+    priority: 15
+    aliases:
+      - physics
+      - quantum
+      - quantum mechanics
+      - relativity
+      - thermodynamics
+      - electromagnetism
+      - optics
+      - astronomy
+      - astrophysics
+      - mechanics
+    platforms:
+      - arxiv
+      - openalex
+      - crossref
+      - doaj
+      - wikipedia
+      - libretexts
+      - openstax
+      - wikibooks
+      - wikiversity
+      - open_library
+      - internet_archive
+    beginner_platforms:
+      - openstax
+      - libretexts
+      - wikibooks
+      - wikipedia
+      - wikiversity
+      - open_library
+      - internet_archive
+    intermediate_platforms:
+      - openstax
+      - libretexts
+      - wikipedia
+      - wikiversity
+      - open_library
+      - openalex
+      - crossref
+      - doaj
+    advanced_platforms:
+      - arxiv
+      - openalex
+      - crossref
+      - doaj
+    formats:
+      - course
+      - book
+      - documentation
+      - research_paper
+    level_rules:
+      beginner:
+        boost_platforms:
+          - openstax
+          - libretexts
+          - wikibooks
+          - wikipedia
+          - wikiversity
+          - open_library
+          - internet_archive
+        suppress_platforms:
+          - arxiv
+          - openalex
+          - crossref
+          - doaj
+        min_beginner_sources: 3
+      intermediate:
+        boost_platforms:
+          - openstax
+          - libretexts
+          - wikipedia
+      advanced:
+        boost_platforms:
+          - arxiv
+          - openalex
+          - crossref
+          - doaj
+
+  law:
+    label: Law
+    priority: 16
+    aliases:
+      - law
+      - legal
+      - constitutional law
+      - constitution
+      - court
+      - case law
+      - criminal law
+      - civil law
+      - international law
+      - contract law
+      - jurisprudence
+    platforms:
+      - open_library
+      - internet_archive
+      - wikipedia
+      - wikiversity
+      - wikibooks
+      - openalex
+      - crossref
+      - doaj
+    beginner_platforms:
+      - wikipedia
+      - open_library
+      - internet_archive
+      - wikiversity
+      - wikibooks
+    intermediate_platforms:
+      - open_library
+      - internet_archive
+      - wikipedia
+      - wikiversity
+      - openalex
+      - crossref
+      - doaj
+    advanced_platforms:
+      - openalex
+      - crossref
+      - doaj
+    formats:
+      - book
+      - documentation
+      - course
+      - research_paper
+    level_rules:
+      beginner:
+        boost_platforms:
+          - wikipedia
+          - open_library
+          - internet_archive
+          - wikiversity
+          - wikibooks
+        suppress_platforms:
+          - openalex
+          - crossref
+          - doaj
+        min_beginner_sources: 3
+      intermediate:
+        boost_platforms:
+          - open_library
+          - internet_archive
+          - wikipedia
+      advanced:
+        boost_platforms:
+          - openalex
+          - crossref
+          - doaj
+
+  humanities:
+    label: Humanities
+    priority: 17
+    aliases:
+      - humanities
+      - history
+      - philosophy
+      - literature
+      - religion
+      - languages
+      - linguistics
+      - culture
+      - ethics
+      - art
+      - arts
+    platforms:
+      - open_library
+      - internet_archive
+      - wikipedia
+      - wikibooks
+      - wikiversity
+      - openalex
+      - crossref
+      - doaj
+    beginner_platforms:
+      - wikipedia
+      - open_library
+      - internet_archive
+      - wikibooks
+      - wikiversity
+    intermediate_platforms:
+      - open_library
+      - internet_archive
+      - wikipedia
+      - wikiversity
+      - openalex
+      - crossref
+      - doaj
+    advanced_platforms:
+      - openalex
+      - crossref
+      - doaj
+    formats:
+      - book
+      - documentation
+      - course
+      - research_paper
+    level_rules:
+      beginner:
+        boost_platforms:
+          - wikipedia
+          - open_library
+          - internet_archive
+          - wikibooks
+          - wikiversity
+        suppress_platforms:
+          - openalex
+          - crossref
+          - doaj
+        min_beginner_sources: 3
+      intermediate:
+        boost_platforms:
+          - open_library
+          - internet_archive
+          - wikipedia
+      advanced:
+        boost_platforms:
+          - openalex
+          - crossref
+          - doaj
+
+  social_science:
+    label: Social Science
+    priority: 18
+    aliases:
+      - social science
+      - social sciences
+      - sociology
+      - psychology
+      - economics
+      - political science
+      - anthropology
+      - geography
+      - public policy
+      - behavioral science
+    platforms:
+      - openalex
+      - crossref
+      - doaj
+      - wikipedia
+      - open_library
+      - internet_archive
+      - wikiversity
+      - libretexts
+      - openstax
+    beginner_platforms:
+      - wikipedia
+      - openstax
+      - libretexts
+      - wikiversity
+      - open_library
+      - internet_archive
+    intermediate_platforms:
+      - openstax
+      - libretexts
+      - wikipedia
+      - wikiversity
+      - open_library
+      - openalex
+      - crossref
+      - doaj
+    advanced_platforms:
+      - openalex
+      - crossref
+      - doaj
+    formats:
+      - course
+      - book
+      - documentation
+      - research_paper
+    level_rules:
+      beginner:
+        boost_platforms:
+          - wikipedia
+          - openstax
+          - libretexts
+          - wikiversity
+          - open_library
+          - internet_archive
+        suppress_platforms:
+          - openalex
+          - crossref
+          - doaj
+        min_beginner_sources: 3
+      intermediate:
+        boost_platforms:
+          - openstax
+          - libretexts
+          - wikipedia
+      advanced:
+        boost_platforms:
+          - openalex
+          - crossref
+          - doaj

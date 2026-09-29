@@ -1,11 +1,11 @@
 voting_mode: majority
 consensus_threshold: 0.7
 min_votes_for_consensus: 2
-min_votes_for_judge: 2
-max_models: 3
+min_votes_for_judge: 3
+max_models: 1
 judge:
   provider: MISTRAL
-  model_id: mistral-medium-latest
+  model_id: ministral-14b-2512
 models:
   - provider: "GROQ"
     model_id: "qwen/qwen3.8-27b"
@@ -17,13 +17,13 @@ models:
     role: "fallback_fast"
     priority: 20
     weight: 1.0
-  - provider: "MISTRAL"
-    model_id: "mistral-small-latest"
+  - provider: "GOOGLE"
+    model_id: "gemini-3.5-flash-lite"
     role: "fallback_fast"
     priority: 30
     weight: 1.0
-  - provider: "MISTRAL"
-    model_id: "mistral-large-latest"
+  - provider: "GROQ"
+    model_id: "openai/gpt-oss-120b"
     role: "primary_strong"
     priority: 10
     weight: 1.3
@@ -38,12 +38,7 @@ models:
     priority: 30
     weight: 1.0
   - provider: "MISTRAL"
-    model_id: "open-mistral-nemo"
-    role: "fallback_strong"
-    priority: 40
-    weight: 1.0
-  - provider: "MISTRAL"
-    model_id: "mistral-medium-latest"
+    model_id: "ministral-14b-2512"
     role: "judge"
     priority: 1
     weight: 1.5

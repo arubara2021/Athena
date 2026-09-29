@@ -1,12 +1,13 @@
 agent:
+  mode: "balanced"
   max_iterations: 15
   max_retries_per_step: 2
   max_actions_per_step: 4
   fast_model: "qwen/qwen3.8-27b"
-  strong_model: "mistral-medium-latest"
-  judge_model: "mistral-medium-latest"
+  strong_model: "gemma-4-31B-it"
+  judge_model: "ministral-14b-2512"
   memory_enabled: true
   reflection_enabled: true
   token_budget: 40000
   quality_threshold: 0.7
-  enable_rag: false
+  enable_rag: true

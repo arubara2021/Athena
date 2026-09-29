@@ -5,3 +5,4 @@ python-dotenv
 feedparser
 typer
 rich
+textual>=0.60

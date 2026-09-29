@@ -1,7 +1,5 @@
 from __future__ import annotations
-
 from typing import Any
-
 from agent.tools.registry import ToolRegistry, ToolDefinition
 from agent.tools.executor import ToolResult
 from core.models import Source, SourcePlatform, SourceType, Difficulty
@@ -12,9 +10,7 @@ from ranking.scorer import HeuristicScorer
 from utils.logger import get_logger
 from utils.text import clean_text
 
-
 _logger = get_logger("agent.tools.analysis")
-
 _ANALYSIS_TIMEOUT = 120.0
 _RANK_TOKEN_COST = 8000
 _CLASSIFY_TOKEN_COST = 1000
@@ -22,9 +18,11 @@ _CLASSIFY_TOKEN_COST = 1000
 
 def _reconstruct_sources(sources_data: list[dict[str, Any]]) -> list[Source]:
     sources = []
+
     for item in sources_data:
         if not isinstance(item, dict):
             continue
+
         try:
             platform_str = str(item.get("platform", "web")).lower()
             try:
@@ -60,34 +58,51 @@ def _reconstruct_sources(sources_data: list[dict[str, Any]]) -> list[Source]:
                 metadata=item.get("metadata", {}),
             )
             sources.append(source)
+
         except Exception as exc:
             _logger.warning(f"Failed to reconstruct source: {exc}")
             continue
+
     return sources
 
 
 async def rank_sources(
-    sources_data: list[dict[str, Any]],
-    query: str,
+    sources_data: list[dict[str, Any]] | None = None,
+    query: str = "",
     level: str = "",
     goal: str = "",
     use_llm: bool = True,
+    **_: Any,
 ) -> ToolResult:
     try:
+        if sources_data is None:
+            sources_data = []
+
+        if not isinstance(sources_data, list):
+            sources_data = []
+
         sources = _reconstruct_sources(sources_data)
+
         if not sources:
             return ToolResult(
                 tool_name="rank_sources",
-                success=False,
-                data=None,
-                error="No valid sources provided for ranking",
+                success=True,
+                data={
+                    "total_ranked": 0,
+                    "rankings": [],
+                    "insufficient_sources": True,
+                    "reason": "No valid sources provided for ranking",
+                },
+                tokens_used=0,
             )
 
+        resolved_query = clean_text(query or goal) or "research sources"
+
         query_schema = SearchQuerySchema(
-            topic=query,
-            goal=goal,
-            level=level,
-            max_results=len(sources),
+            topic=resolved_query,
+            goal=clean_text(goal),
+            level=clean_text(level),
+            max_results=max(1, min(100, len(sources))),
         )
 
         ranker = ConsensusRanker(use_llm=use_llm)
@@ -95,17 +110,19 @@ async def rank_sources(
 
         ranked_data = []
         for item in ranked:
-            ranked_data.append({
-                "rank": item.rank,
-                "score": item.score,
-                "confidence": item.confidence,
-                "reason": item.reason,
-                "source_id": item.source.source_id,
-                "title": item.source.title,
-                "url": item.source.url,
-                "platform": str(getattr(item.source.platform, "value", item.source.platform)),
-                "difficulty": str(getattr(item.source.difficulty, "value", item.source.difficulty)) if item.source.difficulty else None,
-            })
+            ranked_data.append(
+                {
+                    "rank": item.rank,
+                    "score": item.score,
+                    "confidence": item.confidence,
+                    "reason": item.reason,
+                    "source_id": item.source.source_id,
+                    "title": item.source.title,
+                    "url": item.source.url,
+                    "platform": str(getattr(item.source.platform, "value", item.source.platform)),
+                    "difficulty": str(getattr(item.source.difficulty, "value", item.source.difficulty)) if item.source.difficulty else None,
+                }
+            )
 
         return ToolResult(
             tool_name="rank_sources",
@@ -116,6 +133,7 @@ async def rank_sources(
             },
             tokens_used=0,
         )
+
     except Exception as exc:
         _logger.warning(f"rank_sources failed: {exc}")
         return ToolResult(
@@ -127,16 +145,28 @@ async def rank_sources(
 
 
 async def classify_difficulty(
-    sources_data: list[dict[str, Any]],
+    sources_data: list[dict[str, Any]] | None = None,
+    **_: Any,
 ) -> ToolResult:
     try:
+        if sources_data is None:
+            sources_data = []
+
+        if not isinstance(sources_data, list):
+            sources_data = []
+
         sources = _reconstruct_sources(sources_data)
+
         if not sources:
             return ToolResult(
                 tool_name="classify_difficulty",
-                success=False,
-                data=None,
-                error="No valid sources provided for classification",
+                success=True,
+                data={
+                    "classified": [],
+                    "insufficient_sources": True,
+                    "reason": "No valid sources provided for classification",
+                },
+                tokens_used=0,
             )
 
         classifier = DifficultyClassifier()
@@ -144,11 +174,13 @@ async def classify_difficulty(
 
         results = []
         for source in classified:
-            results.append({
-                "source_id": source.source_id,
-                "title": source.title,
-                "difficulty": str(getattr(source.difficulty, "value", source.difficulty)) if source.difficulty else "unknown",
-            })
+            results.append(
+                {
+                    "source_id": source.source_id,
+                    "title": source.title,
+                    "difficulty": str(getattr(source.difficulty, "value", source.difficulty)) if source.difficulty else "unknown",
+                }
+            )
 
         return ToolResult(
             tool_name="classify_difficulty",
@@ -156,6 +188,7 @@ async def classify_difficulty(
             data={"classified": results},
             tokens_used=0,
         )
+
     except Exception as exc:
         _logger.warning(f"classify_difficulty failed: {exc}")
         return ToolResult(
@@ -167,48 +200,77 @@ async def classify_difficulty(
 
 
 async def compare_sources(
-    sources_data: list[dict[str, Any]],
-    query: str,
+    sources_data: list[dict[str, Any]] | None = None,
+    query: str = "",
+    **_: Any,
 ) -> ToolResult:
     try:
+        if not isinstance(sources_data, list):
+            sources_data = []
+
         sources = _reconstruct_sources(sources_data)
-        if len(sources) < 2:
+        cleaned_query = clean_text(query)
+
+        if not sources:
             return ToolResult(
                 tool_name="compare_sources",
-                success=False,
-                data=None,
-                error="Need at least 2 sources to compare",
+                success=True,
+                data={
+                    "query": cleaned_query,
+                    "comparisons": [],
+                    "best_source": None,
+                    "source_count": 0,
+                    "insufficient_sources": True,
+                    "reason": "No sources provided to compare",
+                },
+                tokens_used=0,
             )
 
+        topic = cleaned_query or (sources[0].title if sources else "")
+        if not topic:
+            topic = "source comparison"
+        if len(topic) < 3:
+            topic = f"{topic} comparison"
+
         scorer = HeuristicScorer()
-        query_schema = SearchQuerySchema(topic=query, max_results=len(sources))
+        query_schema = SearchQuerySchema(topic=topic, max_results=len(sources))
 
         comparisons = []
         for source in sources:
             score = scorer.score_source(source, query=query_schema)
             relevance = scorer.relevance_factor(source, query_schema)
-            comparisons.append({
-                "source_id": source.source_id,
-                "title": source.title,
-                "heuristic_score": round(score, 4),
-                "relevance_factor": round(relevance, 4),
-                "platform": str(getattr(source.platform, "value", source.platform)),
-                "year": source.year,
-                "citation_count": source.citation_count,
-            })
+            comparisons.append(
+                {
+                    "source_id": source.source_id,
+                    "title": source.title,
+                    "heuristic_score": round(score, 4),
+                    "relevance_factor": round(relevance, 4),
+                    "platform": str(getattr(source.platform, "value", source.platform)),
+                    "year": source.year,
+                    "citation_count": source.citation_count,
+                }
+            )
 
         comparisons.sort(key=lambda x: x["heuristic_score"], reverse=True)
+
+        data = {
+            "query": topic,
+            "comparisons": comparisons,
+            "best_source": comparisons[0]["title"] if comparisons else None,
+            "source_count": len(sources),
+        }
+
+        if len(sources) < 2:
+            data["insufficient_sources"] = True
+            data["reason"] = "Need at least 2 sources to compare"
 
         return ToolResult(
             tool_name="compare_sources",
             success=True,
-            data={
-                "query": query,
-                "comparisons": comparisons,
-                "best_source": comparisons[0]["title"] if comparisons else None,
-            },
+            data=data,
             tokens_used=0,
         )
+
     except Exception as exc:
         _logger.warning(f"compare_sources failed: {exc}")
         return ToolResult(
@@ -220,24 +282,45 @@ async def compare_sources(
 
 
 async def check_relevance(
-    title: str,
-    abstract: str,
-    query: str,
+    title: str = "",
+    abstract: str = "",
+    query: str = "",
+    **_: Any,
 ) -> ToolResult:
     try:
+        cleaned_title = clean_text(title)
+        cleaned_abstract = clean_text(abstract)
+        cleaned_query = clean_text(query)
+
+        if not cleaned_query:
+            return ToolResult(
+                tool_name="check_relevance",
+                success=True,
+                data={
+                    "is_relevant": False,
+                    "relevance_score": 0.0,
+                    "title": cleaned_title,
+                    "query": "",
+                    "reason": "No query provided",
+                },
+                tokens_used=0,
+            )
+
+        if len(cleaned_query) < 3:
+            cleaned_query = f"{cleaned_query} relevance"
+
         source = Source(
             source_id="relevance_check",
-            title=clean_text(title),
+            title=cleaned_title,
             url="",
             platform=SourcePlatform.WEB,
             source_type=SourceType.OTHER,
-            abstract=clean_text(abstract) if abstract else None,
+            abstract=cleaned_abstract if cleaned_abstract else None,
         )
 
         scorer = HeuristicScorer()
-        query_schema = SearchQuerySchema(topic=query, max_results=1)
+        query_schema = SearchQuerySchema(topic=cleaned_query, max_results=1)
         relevance = scorer.relevance_factor(source, query_schema)
-
         is_relevant = relevance >= 0.3
 
         return ToolResult(
@@ -246,11 +329,12 @@ async def check_relevance(
             data={
                 "is_relevant": is_relevant,
                 "relevance_score": round(relevance, 4),
-                "title": clean_text(title),
-                "query": query,
+                "title": cleaned_title,
+                "query": cleaned_query,
             },
             tokens_used=0,
         )
+
     except Exception as exc:
         _logger.warning(f"check_relevance failed: {exc}")
         return ToolResult(
@@ -270,6 +354,12 @@ def register_analysis_tools(registry: ToolRegistry) -> None:
             token_cost_est=_RANK_TOKEN_COST,
             timeout_seconds=_ANALYSIS_TIMEOUT,
             requires_llm=True,
+            parameters_schema={
+                "sources_data": "array",
+                "query": "string",
+                "level": "string",
+                "goal": "string",
+            },
         ),
         rank_sources,
     )
@@ -282,6 +372,9 @@ def register_analysis_tools(registry: ToolRegistry) -> None:
             token_cost_est=_CLASSIFY_TOKEN_COST,
             timeout_seconds=30.0,
             requires_llm=False,
+            parameters_schema={
+                "sources_data": "array",
+            },
         ),
         classify_difficulty,
     )
@@ -294,6 +387,10 @@ def register_analysis_tools(registry: ToolRegistry) -> None:
             token_cost_est=2000,
             timeout_seconds=30.0,
             requires_llm=False,
+            parameters_schema={
+                "sources_data": "array",
+                "query": "string",
+            },
         ),
         compare_sources,
     )
@@ -306,6 +403,11 @@ def register_analysis_tools(registry: ToolRegistry) -> None:
             token_cost_est=500,
             timeout_seconds=15.0,
             requires_llm=False,
+            parameters_schema={
+                "title": "string",
+                "abstract": "string",
+                "query": "string",
+            },
         ),
         check_relevance,
     )

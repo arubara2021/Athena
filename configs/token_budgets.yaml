@@ -1,10 +1,20 @@
 defaults:
   total_budget_per_task: 40000
-  wrap_up_threshold: 5000
-  wrap_up_mode_budget: 3000
+  wrap_up_threshold: 8000
   currency: "tokens"
   allow_burst: false
   burst_multiplier: 1.15
+
+modes:
+  fast:
+    total_budget_per_task: 8000
+    wrap_up_threshold: 2000
+  balanced:
+    total_budget_per_task: 15000
+    wrap_up_threshold: 4000
+  deep:
+    total_budget_per_task: 40000
+    wrap_up_threshold: 8000
 
 categories:
   planning:

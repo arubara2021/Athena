@@ -192,3 +192,91 @@ def parse_json_or_text(text: Any) -> Any:
         return parse_json_response(text)
     except Exception:
         return str(text or "")
+
+
+def _extract_complete_objects_from_array(
+    text: str,
+    key: str,
+) -> list[Any]:
+    pattern = re.compile(
+        rf'"{re.escape(key)}"\s*:\s*\[',
+        re.IGNORECASE,
+    )
+    match = pattern.search(text)
+    if not match:
+        return []
+
+    pos = match.end()
+    objects: list[Any] = []
+
+    while pos < len(text):
+        while pos < len(text) and text[pos] in " \t\n\r,":
+            pos += 1
+
+        if pos >= len(text):
+            break
+        if text[pos] == "]":
+            break
+        if text[pos] != "{":
+            break
+
+        substring = _find_balanced_from(text, pos, "{", "}")
+        if substring is None:
+            break
+
+        parsed_obj = _try_loads(substring)
+        if parsed_obj is not None:
+            objects.append(parsed_obj)
+
+        pos += len(substring)
+
+    return objects
+
+
+def _count_unbalanced(text: str) -> int:
+    opens = text.count("{") + text.count("[")
+    closes = text.count("}") + text.count("]")
+    return max(0, opens - closes)
+
+
+def parse_truncated_json_object(
+    text: Any,
+) -> dict[str, Any] | None:
+    cleaned = strip_code_fences(text).strip()
+    if not cleaned:
+        return None
+
+    parsed = _try_loads(cleaned)
+    if isinstance(parsed, dict) and parsed:
+        return parsed
+
+    for key in ("steps", "rankings", "sources"):
+        items = _extract_complete_objects_from_array(cleaned, key)
+        if items:
+            return {key: items}
+
+    stripped = cleaned.rstrip()
+    if stripped.endswith((",", ":", "[", "{")):
+        trimmed = stripped.rstrip(",:").rstrip()
+
+        for suffix in ("}", "]}", "}}", "]} }"):
+            candidate = trimmed + suffix
+            parsed = _try_loads(candidate)
+            if isinstance(parsed, dict) and parsed:
+                return parsed
+
+    unbalanced = _count_unbalanced(cleaned)
+    if unbalanced > 0:
+        for suffix in ("}" * unbalanced, "]" * unbalanced):
+            candidate = cleaned + suffix
+            parsed = _try_loads(candidate)
+            if isinstance(parsed, dict) and parsed:
+                return parsed
+
+        for suffix in ("}]}", '"]} }', "}}"):
+            candidate = cleaned + suffix
+            parsed = _try_loads(candidate)
+            if isinstance(parsed, dict) and parsed:
+                return parsed
+
+    return None

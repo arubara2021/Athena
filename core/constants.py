@@ -24,6 +24,7 @@ DATA_RAW_DIR = "raw"
 DATA_PROCESSED_DIR = "processed"
 
 _USER_AGENT_CONTACT = os.getenv("RESEARCH_AGENT_CONTACT", "").strip()
+
 if _USER_AGENT_CONTACT:
     USER_AGENT = (
         f"{APP_NAME}/{APP_VERSION} "
@@ -96,6 +97,19 @@ SERPAPI_BASE_URL = "https://serpapi.com"
 JINA_BASE_URL = "https://r.jina.ai"
 JINA_SEARCH_BASE_URL = "https://s.jina.ai"
 
+CROSSREF_BASE_URL = "https://api.crossref.org"
+EUROPE_PMC_BASE_URL = "https://www.ebi.ac.uk/europepmc/webservices/rest"
+PUBMED_BASE_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
+DOAJ_BASE_URL = "https://doaj.org/api"
+ZENODO_BASE_URL = "https://zenodo.org/api"
+DATACITE_BASE_URL = "https://api.datacite.org"
+OPEN_LIBRARY_BASE_URL = "https://openlibrary.org"
+INTERNET_ARCHIVE_BASE_URL = "https://archive.org"
+WIKIBOOKS_BASE_URL = "https://en.wikibooks.org/w/api.php"
+WIKIVERSITY_BASE_URL = "https://en.wikiversity.org/w/api.php"
+STACK_EXCHANGE_BASE_URL = "https://api.stackexchange.com/2.3"
+HACKER_NEWS_BASE_URL = "https://hn.algolia.com/api/v1"
+
 DEFAULT_TIMEOUT_SECONDS = 45.0
 DEFAULT_CONNECT_TIMEOUT_SECONDS = 10.0
 DEFAULT_MAX_RETRIES = 2
@@ -151,6 +165,21 @@ SOURCE_PLATFORM_CORE = "core"
 SOURCE_PLATFORM_SERPER = "serper"
 SOURCE_PLATFORM_SERPAPI = "serpapi"
 SOURCE_PLATFORM_JINA = "jina"
+SOURCE_PLATFORM_CROSSREF = "crossref"
+SOURCE_PLATFORM_EUROPE_PMC = "europe_pmc"
+SOURCE_PLATFORM_PUBMED = "pubmed"
+SOURCE_PLATFORM_DOAJ = "doaj"
+SOURCE_PLATFORM_ZENODO = "zenodo"
+SOURCE_PLATFORM_DATACITE = "datacite"
+SOURCE_PLATFORM_OPEN_LIBRARY = "open_library"
+SOURCE_PLATFORM_INTERNET_ARCHIVE = "internet_archive"
+SOURCE_PLATFORM_WIKIBOOKS = "wikibooks"
+SOURCE_PLATFORM_WIKIVERSITY = "wikiversity"
+SOURCE_PLATFORM_OPENSTAX = "openstax"
+SOURCE_PLATFORM_MIT_OCW = "mit_ocw"
+SOURCE_PLATFORM_LIBRETEXTS = "libretexts"
+SOURCE_PLATFORM_STACK_EXCHANGE = "stack_exchange"
+SOURCE_PLATFORM_HACKER_NEWS = "hacker_news"
 
 SOURCE_TYPE_PAPER = "research_paper"
 SOURCE_TYPE_REPOSITORY = "repository"
@@ -160,11 +189,50 @@ SOURCE_TYPE_BLOG = "blog"
 SOURCE_TYPE_DOCUMENTATION = "documentation"
 SOURCE_TYPE_DATASET = "dataset"
 SOURCE_TYPE_MODEL = "model"
+SOURCE_TYPE_BOOK = "book"
 SOURCE_TYPE_OTHER = "other"
 
 DIFFICULTY_BEGINNER = "beginner"
 DIFFICULTY_INTERMEDIATE = "intermediate"
 DIFFICULTY_ADVANCED = "advanced"
+
+LEVEL_PROFILE_BEGINNER = "beginner"
+LEVEL_PROFILE_MIXED = "mixed"
+LEVEL_PROFILE_ADVANCED = "advanced"
+LEVEL_PROFILE_BALANCED = "balanced"
+
+VALID_LEVEL_PROFILES = (
+    LEVEL_PROFILE_BEGINNER,
+    LEVEL_PROFILE_MIXED,
+    LEVEL_PROFILE_ADVANCED,
+    LEVEL_PROFILE_BALANCED,
+)
+
+PLATFORM_TIER_BEGINNER = "beginner"
+PLATFORM_TIER_RESEARCH = "research"
+PLATFORM_TIER_CODE = "code"
+PLATFORM_TIER_REFERENCE = "reference"
+PLATFORM_TIER_WEB = "web"
+
+VALID_PLATFORM_TIERS = (
+    PLATFORM_TIER_BEGINNER,
+    PLATFORM_TIER_RESEARCH,
+    PLATFORM_TIER_CODE,
+    PLATFORM_TIER_REFERENCE,
+    PLATFORM_TIER_WEB,
+)
+
+PLATFORM_LEVEL_AFFINITY_BEGINNER = "beginner"
+PLATFORM_LEVEL_AFFINITY_INTERMEDIATE = "intermediate"
+PLATFORM_LEVEL_AFFINITY_ADVANCED = "advanced"
+PLATFORM_LEVEL_AFFINITY_ANY = "any"
+
+VALID_PLATFORM_LEVEL_AFFINITIES = (
+    PLATFORM_LEVEL_AFFINITY_BEGINNER,
+    PLATFORM_LEVEL_AFFINITY_INTERMEDIATE,
+    PLATFORM_LEVEL_AFFINITY_ADVANCED,
+    PLATFORM_LEVEL_AFFINITY_ANY,
+)
 
 MIN_SEARCH_QUERY_LENGTH = 2
 MAX_SEARCH_QUERY_LENGTH = 500
@@ -201,7 +269,6 @@ AGENT_MAX_RETRIES_PER_STEP = 5
 
 AGENT_WRAP_UP_THRESHOLD_PERCENT = 85.0
 AGENT_CRITICAL_THRESHOLD_PERCENT = 95.0
-AGENT_WRAP_UP_MODE_BUDGET = 3000
 
 AGENT_PLANNING_BUDGET = 5000
 AGENT_SEARCH_BUDGET = 3000
@@ -228,7 +295,7 @@ AGENT_EVENT_STEP_COMPLETED = "agent.step_completed"
 AGENT_EVENT_BUDGET_WARNING = "agent.budget_warning"
 AGENT_EVENT_BUDGET_EXHAUSTED = "agent.budget_exhausted"
 AGENT_EVENT_SYNTHESIZING = "agent.synthesizing"
-AGENT_EVENT_COMPLETED = "agent.completed"
+AGENT_EVENT_COMPLETED = "agent_completed"
 AGENT_EVENT_FAILED = "agent.failed"
 
 AGENT_TOKEN_CATEGORY_PLANNING = "planning"
@@ -254,3 +321,179 @@ AGENT_TOOL_ENHANCE_PATH = "enhance_path"
 AGENT_TOOL_SAVE_MEMORY = "save_memory"
 AGENT_TOOL_RECALL_MEMORY = "recall_memory"
 AGENT_TOOL_COMPARE_SOURCES = "compare_sources"
+
+KEYLESS_FALLBACK_ENABLED = True
+MIN_SOURCES_BEFORE_FALLBACK = 10
+
+DEFAULT_KEYLESS_FALLBACK_PLATFORMS = (
+    "arxiv",
+    "semantic_scholar",
+    "openalex",
+    "crossref",
+    "europe_pmc",
+    "pubmed",
+    "doaj",
+    "zenodo",
+    "open_library",
+    "internet_archive",
+    "wikibooks",
+    "wikiversity",
+    "openstax",
+    "mit_ocw",
+    "wikipedia",
+    "github",
+    "huggingface",
+)
+
+MODE_FAST = "fast"
+MODE_BALANCED = "balanced"
+MODE_DEEP = "deep"
+
+VALID_MODES = (
+    MODE_FAST,
+    MODE_BALANCED,
+    MODE_DEEP,
+)
+
+DEFAULT_MODE = MODE_BALANCED
+
+SUMMARY_CONCURRENCY_FAST = 3
+SUMMARY_CONCURRENCY_BALANCED = 3
+SUMMARY_CONCURRENCY_DEEP = 4
+
+SUMMARY_BATCH_PAUSE_FAST = 0.0
+SUMMARY_BATCH_PAUSE_BALANCED = 0.4
+SUMMARY_BATCH_PAUSE_DEEP = 0.2
+
+MODE_DEFAULTS = {
+    MODE_FAST: {
+        "iterations": 1,
+        "model_tier": "fast",
+        "top_n": 10,
+        "enhance": "none",
+        "budget": 8000,
+        "wrap_up_threshold": 2000,
+        "min_sources": 5,
+        "parallel_stages": True,
+        "skip_ranking_llm": True,
+        "skip_path_llm": True,
+        "search_timeout_seconds": 10.0,
+        "summarize_max": 5,
+        "summarize_concurrency": SUMMARY_CONCURRENCY_FAST,
+        "summarize_batch_pause": SUMMARY_BATCH_PAUSE_FAST,
+        "max_query_variants": 2,
+        "enable_rag": False,
+        "use_llm_expansion": False,
+    },
+    MODE_BALANCED: {
+        "iterations": 2,
+        "model_tier": "strong",
+        "top_n": 15,
+        "enhance": "light",
+        "budget": 15000,
+        "wrap_up_threshold": 4000,
+        "min_sources": 8,
+        "parallel_stages": True,
+        "skip_ranking_llm": False,
+        "skip_path_llm": False,
+        "search_timeout_seconds": 12.0,
+        "summarize_max": 10,
+        "summarize_concurrency": SUMMARY_CONCURRENCY_BALANCED,
+        "summarize_batch_pause": SUMMARY_BATCH_PAUSE_BALANCED,
+        "max_query_variants": 3,
+        "enable_rag": False,
+        "use_llm_expansion": True,
+    },
+    MODE_DEEP: {
+        "iterations": 15,
+        "model_tier": "strong",
+        "top_n": 20,
+        "enhance": "full",
+        "budget": 40000,
+        "wrap_up_threshold": 8000,
+        "min_sources": 10,
+        "parallel_stages": True,
+        "skip_ranking_llm": False,
+        "skip_path_llm": False,
+        "search_timeout_seconds": 20.0,
+        "summarize_max": 20,
+        "summarize_concurrency": SUMMARY_CONCURRENCY_DEEP,
+        "summarize_batch_pause": SUMMARY_BATCH_PAUSE_DEEP,
+        "max_query_variants": 5,
+        "enable_rag": True,
+        "use_llm_expansion": True,
+    },
+}
+
+DEFAULT_ACT_TIMEOUT = 30.0
+ACT_TIMEOUT_MIN = 5.0
+ACT_TIMEOUT_MAX = 120.0
+
+SEARCH_TOOL_TIMEOUT = 40.0
+ORCHESTRATOR_TIMEOUT = 25.0
+DIRECT_CLIENT_TIMEOUT = 12.0
+
+TOOL_DEFAULT_TIMEOUT = 30.0
+TOOL_TIMEOUT_MIN = 5.0
+TOOL_TIMEOUT_MAX = 120.0
+
+DEFAULT_THINK_MAX_TOKENS = 500
+THINK_TEMPERATURE = 0.0
+
+SUMMARY_MAX_TOKENS = 200
+SUMMARY_CONCURRENCY = 3
+SUMMARY_BATCH_SIZE = 6
+SUMMARY_BATCH_PAUSE = 0.0
+SUMMARY_MAX_RETRIES = 2
+SUMMARY_RETRY_BACKOFF_SECONDS = 1.5
+
+SUMMARY_CONCURRENCY_FAST = 3
+SUMMARY_CONCURRENCY_BALANCED = 3
+SUMMARY_CONCURRENCY_DEEP = 4
+
+SUMMARY_BATCH_PAUSE_FAST = 0.0
+SUMMARY_BATCH_PAUSE_BALANCED = 0.4
+SUMMARY_BATCH_PAUSE_DEEP = 0.2
+
+RANKER_MAX_OUTPUT_TOKENS_FLOOR = 1200
+RANKER_MAX_OUTPUT_TOKENS_PER_SOURCE = 80
+RANKER_TEMPERATURE = 0.0
+
+PATH_TOKEN_FLOOR = 4000
+PATH_TOKEN_CEILING = 6000
+PATH_PER_STEP_TOKENS = 600
+PATH_WRAPPER_TOKENS = 1500
+PATH_TRUNCATION_RATIO = 0.98
+PATH_MIN_STEP_RESOURCE_SCORE = 0.30
+PATH_MINIMUM_STEPS = 3
+PATH_MAX_TARGET_STEPS = 6
+
+ENHANCER_MAX_TOKENS = 800
+ENHANCER_TEMPERATURE = 0.0
+
+SEARCH_REQUEST_TIMEOUT = 12.0
+SEARCH_CONCURRENCY = 6
+SEARCH_MAX_QUERY_VARIANTS = 5
+
+MAX_SOURCES_TO_SUMMARIZE = 20
+MAX_SOURCES_TO_RANK = 20
+
+RAG_DEFAULT_ANSWER_STYLE = "standard"
+RAG_CHUNK_QUERY_TOKEN_THRESHOLD = 3
+RAG_CHUNK_GATE_MIN_TOKENS = 2
+RAG_CHUNK_GATE_MAX_TOKENS = 20
+
+EMBEDDING_BATCH_SIZE = 32
+EMBEDDING_MAX_RETRIES = 2
+EMBEDDING_RETRY_BACKOFF_SECONDS = 1.5
+
+QUALITY_FLOOR_MIN_SCORE = 0.20
+QUALITY_FLOOR_MIN_SOURCES = 3
+QUALITY_FLOOR_BAND_RATIO = 0.50
+RELEVANCE_RETENTION_RATIO = 0.40
+RELEVANCE_ABSOLUTE_FLOOR = 0.10
+TOPIC_PRESENCE_MIN_OVERLAP = 1
+TOPIC_PRESENCE_MIN_COVERAGE = 0.20
+BEGINNER_RESCUE_MAX = 2
+BEGINNER_RESCUE_MIN_SCORE_RATIO = 0.60
+BEGINNER_RESCUE_MIN_RELEVANCE = 0.20

@@ -1,15 +1,14 @@
 from __future__ import annotations
+
 import asyncio
 import json
 import time
 from pathlib import Path
 from typing import Any
+
 from core import constants
 from core.exceptions import EnsembleError
-from llm.guardrails import validate_llm_request, validate_llm_response
-from llm.parser import parse_json_response
-from llm.provider import LLMProviderManager
-from core.models import EnsembleVote, ModelReference
+from core.models import CoreModel, EnsembleVote, ModelReference
 from core.schemas import (
     EnsembleRequestSchema,
     EnsembleResultSchema,
@@ -17,31 +16,19 @@ from core.schemas import (
     LLMMessageSchema,
     LLMRequestSchema,
 )
+from llm.guardrails import validate_llm_request, validate_llm_response
+from llm.parser import parse_json_response
+from llm.provider import LLMProviderManager
 from utils.hashing import stable_hash
 from utils.logger import get_logger, get_trace_logger
 
-_MIN_VOTES_CACHE: int | None = None
 
-def _load_min_consensus_votes() -> int:
-    global _MIN_VOTES_CACHE
-    if _MIN_VOTES_CACHE is not None:
-        return _MIN_VOTES_CACHE
-    value = 2
-    try:
-        import yaml
-        config_path = Path(__file__).resolve().parent.parent / "configs" / "ensemble.yaml"
-        if config_path.exists():
-            with open(config_path, "r", encoding="utf-8") as handle:
-                loaded = yaml.safe_load(handle) or {}
-                if isinstance(loaded, dict):
-                    raw = loaded.get("min_votes_for_consensus")
-                    parsed = int(raw)
-                    if parsed >= 1:
-                        value = parsed
-    except Exception:
-        pass
-    _MIN_VOTES_CACHE = value
-    return value
+class VoteFingerprint(CoreModel):
+    strict: str = ""
+    loose: str = ""
+    reasoning: str = ""
+    has_rankings: bool = False
+
 
 class EnsembleEngine:
     def __init__(self, manager: LLMProviderManager | None = None) -> None:
@@ -58,32 +45,56 @@ class EnsembleEngine:
             self._owns_manager = True
         return self
 
-    async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> bool:
+    async def __aexit__(
+        self,
+        exc_type: Any,
+        exc: Any,
+        tb: Any,
+    ) -> bool:
         if self._owns_manager and self._manager is not None:
             await self._manager.__aexit__(exc_type, exc, tb)
             self._manager = self._external_manager
         return False
 
-    async def run(self, request: EnsembleRequestSchema) -> EnsembleResultSchema:
+    async def run(
+        self,
+        request: EnsembleRequestSchema,
+    ) -> EnsembleResultSchema:
         if self._manager is None:
-            raise EnsembleError("EnsembleEngine has no active LLMProviderManager")
+            raise EnsembleError(
+                "EnsembleEngine has no active LLMProviderManager"
+            )
+
         validated_request = EnsembleRequestSchema.model_validate(request)
+
         self._trace.emit(
             "ensemble_start",
             task_id=validated_request.task_id,
             model_count=len(validated_request.models),
             models=[
-                {"provider": m.provider.value, "model_id": m.model_id}
+                {
+                    "provider": m.provider.value,
+                    "model_id": m.model_id,
+                }
                 for m in validated_request.models
             ],
         )
-        tasks = [
-            self._run_model(validated_request, model_reference)
-            for model_reference in validated_request.models
-        ]
-        votes = await asyncio.gather(*tasks)
+
+        if len(validated_request.models) == 1:
+            single_vote = await self._run_model(
+                validated_request, validated_request.models[0]
+            )
+            votes = [single_vote]
+        else:
+            tasks = [
+                self._run_model(validated_request, model_reference)
+                for model_reference in validated_request.models
+            ]
+            votes = await asyncio.gather(*tasks)
+
         successful_votes = [vote for vote in votes if vote.success]
         failed_votes = [vote for vote in votes if not vote.success]
+
         self._trace.emit(
             "ensemble_votes_collected",
             task_id=validated_request.task_id,
@@ -95,6 +106,7 @@ class EnsembleEngine:
                 for v in failed_votes
             ],
         )
+
         if not successful_votes:
             self._trace.emit(
                 "ensemble_all_failed",
@@ -107,22 +119,32 @@ class EnsembleEngine:
                     "errors": [vote.error for vote in votes if vote.error],
                 },
             )
-        min_votes = _load_min_consensus_votes()
-        final_output, agreement_score = self._majority_output(
+
+        min_votes = 2
+        threshold = float(validated_request.threshold)
+
+        (
+            final_output,
+            agreement_score,
+            agreement_mode,
+        ) = self._majority_output(
             successful_votes,
-            validated_request.threshold,
+            threshold,
             min_votes,
         )
+
         self._trace.emit(
             "ensemble_result",
             task_id=validated_request.task_id,
-            agreement_score=agreement_score,
+            agreement_score=round(agreement_score, 4),
+            agreement_mode=agreement_mode,
             consensus_reached=final_output is not None,
-            threshold=validated_request.threshold,
+            threshold=threshold,
             successful_votes=len(successful_votes),
             total_votes=len(votes),
             min_votes_required=min_votes,
         )
+
         return EnsembleResultSchema(
             task_id=validated_request.task_id,
             success=True,
@@ -140,7 +162,7 @@ class EnsembleEngine:
                 for vote in votes
             ],
             judge_used=False,
-            reasoning=None,
+            reasoning=f"agreement_mode={agreement_mode}",
         )
 
     async def _run_model(
@@ -149,6 +171,7 @@ class EnsembleEngine:
         model_reference: ModelReference,
     ) -> EnsembleVote:
         start = time.perf_counter()
+
         if self._manager is None:
             return EnsembleVote(
                 provider=model_reference.provider,
@@ -158,6 +181,7 @@ class EnsembleEngine:
                 success=False,
                 error="LLMProviderManager is not initialized",
             )
+
         try:
             messages = self._build_messages(request)
             llm_request = LLMRequestSchema(
@@ -165,15 +189,26 @@ class EnsembleEngine:
                 model=model_reference.model_id,
                 messages=messages,
                 temperature=constants.DEFAULT_TEMPERATURE,
-                max_tokens=int(request.context.get("max_tokens", constants.DEFAULT_MAX_TOKENS)),
-                response_format=request.context.get("response_format", "json_object"),
+                max_tokens=int(
+                    request.context.get(
+                        "max_tokens",
+                        constants.DEFAULT_MAX_TOKENS,
+                    )
+                ),
+                response_format=request.context.get(
+                    "response_format",
+                    "json_object",
+                ),
                 timeout=request.context.get("timeout"),
             )
             llm_request = validate_llm_request(llm_request)
             response = await self._manager.complete(llm_request)
             response = validate_llm_response(response)
             output = self._parse_output(response.content, request)
-            latency_ms = response.latency_ms or (time.perf_counter() - start) * 1000
+            latency_ms = response.latency_ms or (
+                time.perf_counter() - start
+            ) * 1000
+
             return EnsembleVote(
                 provider=model_reference.provider,
                 model_id=model_reference.model_id,
@@ -184,6 +219,7 @@ class EnsembleEngine:
             )
         except Exception as exc:
             latency_ms = (time.perf_counter() - start) * 1000
+
             return EnsembleVote(
                 provider=model_reference.provider,
                 model_id=model_reference.model_id,
@@ -193,8 +229,14 @@ class EnsembleEngine:
                 error=str(exc),
             )
 
-    def _build_messages(self, request: EnsembleRequestSchema) -> list[LLMMessageSchema]:
-        system_prompt = str(request.context.get("system_prompt", "")).strip()
+    def _build_messages(
+        self,
+        request: EnsembleRequestSchema,
+    ) -> list[LLMMessageSchema]:
+        system_prompt = str(
+            request.context.get("system_prompt", "")
+        ).strip()
+
         excluded_context_keys = {
             "system_prompt",
             "expect_json",
@@ -202,28 +244,43 @@ class EnsembleEngine:
             "timeout",
             "response_format",
         }
+
         extra_context = {
             key: value
             for key, value in request.context.items()
             if key not in excluded_context_keys
         }
+
         user_content = request.prompt
+
         if extra_context:
             user_content = (
                 f"{request.prompt}\n"
                 f"Context:\n"
                 f"{json.dumps(extra_context, ensure_ascii=False, indent=2, default=str)}"
             )
+
         messages: list[LLMMessageSchema] = []
+
         if system_prompt:
-            messages.append(LLMMessageSchema(role="system", content=system_prompt))
+            messages.append(
+                LLMMessageSchema(role="system", content=system_prompt)
+            )
+
         messages.append(LLMMessageSchema(role="user", content=user_content))
+
         return messages
 
-    def _parse_output(self, content: str, request: EnsembleRequestSchema) -> Any:
+    def _parse_output(
+        self,
+        content: str,
+        request: EnsembleRequestSchema,
+    ) -> Any:
         expect_json = bool(request.context.get("expect_json", True))
+
         if not expect_json:
             return content
+
         try:
             return parse_json_response(content)
         except Exception:
@@ -234,48 +291,132 @@ class EnsembleEngine:
         votes: list[EnsembleVote],
         threshold: float,
         min_votes: int,
-    ) -> tuple[Any, float]:
+    ) -> tuple[Any, float, str]:
         if not votes:
-            return None, 0.0
-        groups: dict[str, dict[str, Any]] = {}
+            return None, 0.0, "none"
+
+        strict_groups: dict[str, dict[str, Any]] = {}
+        loose_groups: dict[str, dict[str, Any]] = {}
+
         for vote in votes:
             fingerprint = self._vote_fingerprint(vote.output)
-            entry = groups.get(fingerprint)
-            if entry is None:
-                groups[fingerprint] = {
+
+            strict_entry = strict_groups.get(fingerprint.strict)
+
+            if strict_entry is None:
+                strict_groups[fingerprint.strict] = {
                     "count": 1,
                     "output": vote.output,
                 }
             else:
-                entry["count"] += 1
-        best = max(groups.values(), key=lambda item: item["count"])
-        agreement_score = best["count"] / len(votes)
-        if len(votes) < min_votes:
-            return None, agreement_score
-        if agreement_score >= threshold:
-            return best["output"], agreement_score
-        return None, agreement_score
+                strict_entry["count"] += 1
 
-    def _vote_fingerprint(self, output: Any) -> str:
+            loose_entry = loose_groups.get(fingerprint.loose)
+
+            if loose_entry is None:
+                loose_groups[fingerprint.loose] = {
+                    "count": 1,
+                    "output": vote.output,
+                }
+            else:
+                loose_entry["count"] += 1
+
+        total = len(votes)
+
+        if total < min_votes:
+            best = max(
+                strict_groups.values(),
+                key=lambda item: item["count"],
+            )
+            return None, best["count"] / total, "insufficient"
+
+        best_strict = max(
+            strict_groups.values(),
+            key=lambda item: item["count"],
+        )
+        strict_agreement = best_strict["count"] / total
+
+        if strict_agreement >= threshold:
+            return best_strict["output"], strict_agreement, "strict"
+
+        best_loose = max(
+            loose_groups.values(),
+            key=lambda item: item["count"],
+        )
+        loose_agreement = best_loose["count"] / total
+
+        if loose_agreement >= threshold:
+            return best_loose["output"], loose_agreement, "loose"
+
+        return None, strict_agreement, "disagreement"
+
+    def _vote_fingerprint(self, output: Any) -> VoteFingerprint:
         rankings: Any = None
-        if hasattr(output, "model_dump"):
-            output = output.model_dump()
-        if isinstance(output, dict):
-            rankings = output.get("rankings")
-        elif isinstance(output, list):
-            rankings = output
+        normalized = output
+
+        if hasattr(normalized, "model_dump"):
+            try:
+                normalized = normalized.model_dump(mode="json")
+            except Exception:
+                pass
+
+        if isinstance(normalized, dict):
+            rankings = normalized.get("rankings")
+        elif isinstance(normalized, list):
+            rankings = normalized
 
         if isinstance(rankings, list) and rankings:
-            ids: list[str] = []
+            strict_parts: list[str] = []
+            loose_parts: list[str] = []
+            reasoning_parts: list[str] = []
+
             for item in rankings:
                 if hasattr(item, "model_dump"):
-                    item = item.model_dump()
-                if isinstance(item, dict):
-                    ids.append(str(item.get("source_id", "")))
-            if ids:
-                return stable_hash("|".join(ids))
+                    try:
+                        item = item.model_dump(mode="json")
+                    except Exception:
+                        continue
+
+                if not isinstance(item, dict):
+                    continue
+
+                source_id = str(item.get("source_id", "") or "").strip()
+                score = item.get("score")
+                reason = item.get("reason")
+
+                try:
+                    score_num = (
+                        float(score) if score is not None else 0.0
+                    )
+                except (TypeError, ValueError):
+                    score_num = 0.0
+
+                strict_parts.append(
+                    f"{source_id}:{round(score_num, 2):.2f}"
+                )
+                loose_parts.append(source_id)
+                reasoning_parts.append(str(reason or ""))
+
+            if strict_parts:
+                strict = stable_hash("|".join(strict_parts))
+                loose = stable_hash("|".join(loose_parts))
+                reasoning = stable_hash("|".join(reasoning_parts))
+
+                return VoteFingerprint(
+                    strict=strict,
+                    loose=loose,
+                    reasoning=reasoning,
+                    has_rankings=True,
+                )
 
         try:
-            return stable_hash(output)
+            fallback = stable_hash(normalized)
         except Exception:
-            return stable_hash(str(output))
+            fallback = stable_hash(str(normalized))
+
+        return VoteFingerprint(
+            strict=fallback,
+            loose=fallback,
+            reasoning=fallback,
+            has_rankings=False,
+        )

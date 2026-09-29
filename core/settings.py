@@ -4,7 +4,7 @@ import json
 from typing import Any
 from pathlib import Path
 
-from pydantic import Field, SecretStr, field_validator, model_validator
+from pydantic import Field, PrivateAttr, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from core import constants
@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     google_api_key: SecretStr = SecretStr("")
     mistral_api_key: SecretStr = SecretStr("")
     nvidia_api_key: SecretStr = SecretStr("")
+
+    sambanova_api_key_2: SecretStr = SecretStr("")
+    groq_api_key_2: SecretStr = SecretStr("")
+    google_api_key_2: SecretStr = SecretStr("")
+    mistral_api_key_2: SecretStr = SecretStr("")
+    nvidia_api_key_2: SecretStr = SecretStr("")
 
     github_token: SecretStr = SecretStr("")
     semantic_scholar_api_key: SecretStr = SecretStr("")
@@ -62,8 +68,9 @@ class Settings(BaseSettings):
         default=constants.DEFAULT_RATE_LIMIT_PER_MINUTE,
         ge=1,
     )
+    llm_key_cooldown_seconds: float = Field(default=60.0, ge=5.0, le=600.0)
 
-    search_concurrency: int = Field(default=4, ge=1, le=16)
+    search_concurrency: int = Field(default=6, ge=1, le=16)
     search_max_query_variants: int = Field(default=5, ge=1, le=12)
     search_request_timeout_seconds: float = Field(default=45.0, gt=0, le=120)
     search_default_max_results: int = Field(default=20, ge=1, le=100)
@@ -75,15 +82,20 @@ class Settings(BaseSettings):
         default_factory=lambda: [
             SourcePlatform.ARXIV.value,
             SourcePlatform.OPENALEX.value,
-            SourcePlatform.GITHUB.value,
+            SourcePlatform.CROSSREF.value,
+            SourcePlatform.EUROPE_PMC.value,
+            SourcePlatform.PUBMED.value,
+            SourcePlatform.DOAJ.value,
+            SourcePlatform.ZENODO.value,
+            SourcePlatform.OPEN_LIBRARY.value,
+            SourcePlatform.INTERNET_ARCHIVE.value,
+            SourcePlatform.WIKIBOOKS.value,
+            SourcePlatform.WIKIVERSITY.value,
+            SourcePlatform.OPENSTAX.value,
+            SourcePlatform.MIT_OCW.value,
             SourcePlatform.WIKIPEDIA.value,
+            SourcePlatform.GITHUB.value,
             SourcePlatform.HUGGINGFACE.value,
-            SourcePlatform.TAVILY.value,
-            SourcePlatform.EXA.value,
-            SourcePlatform.CORE.value,
-            SourcePlatform.SERPER.value,
-            SourcePlatform.JINA.value,
-            SourcePlatform.SERPAPI.value,
         ]
     )
 
@@ -169,7 +181,10 @@ class Settings(BaseSettings):
         le=1.0,
     )
 
-    agent_enable_rag: bool = False
+    agent_enable_rag: bool = True
+
+    _resolved_default_platforms_cache: tuple[str, ...] | None = PrivateAttr(default=None)
+    _sources_config_cache: dict[str, Any] | None = PrivateAttr(default=None)
 
     @field_validator("environment", mode="before")
     @classmethod
@@ -323,6 +338,54 @@ class Settings(BaseSettings):
             for provider, key in self.llm_provider_keys.items()
         }
 
+    @property
+    def resolved_default_platforms(self) -> tuple[str, ...]:
+        if self._resolved_default_platforms_cache is not None:
+            return self._resolved_default_platforms_cache
+
+        sources_config = self._load_sources_config()
+        platform_configs = sources_config.get("platforms", {})
+
+        if not isinstance(platform_configs, dict):
+            platform_configs = {}
+
+        resolved: list[str] = []
+
+        for platform in self.default_search_platforms:
+            config = platform_configs.get(platform, {})
+
+            if not isinstance(config, dict):
+                continue
+
+            if not bool(config.get("enabled", True)):
+                continue
+
+            requires_key = bool(config.get("requires_api_key", False))
+
+            if requires_key:
+                setting_name = str(
+                    config.get("api_key_setting") or f"{platform}_api_key"
+                )
+
+                secret = getattr(self, setting_name, None)
+
+                if secret is None:
+                    continue
+
+                if hasattr(secret, "get_secret_value"):
+                    if not secret.get_secret_value().strip():
+                        continue
+                elif not str(secret).strip():
+                    continue
+
+            resolved.append(platform)
+
+        if not resolved:
+            resolved = list(self.default_search_platforms)
+
+        self._resolved_default_platforms_cache = tuple(resolved)
+        return self._resolved_default_platforms_cache
+
     def get_provider_key(self, provider: ProviderName) -> SecretStr:
         return self.llm_provider_keys.get(provider, SecretStr(""))
 
@@ -340,6 +403,49 @@ class Settings(BaseSettings):
             )
 
         return key
+
+    def get_provider_keys(self, provider: ProviderName) -> tuple[str, ...]:
+        keys: list[str] = []
+
+        primary = self.get_provider_key(provider).get_secret_value().strip()
+
+        for chunk in primary.split(","):
+            item = chunk.strip()
+
+            if item and item not in keys:
+                keys.append(item)
+
+        secondary_attr = f"{provider.value.lower()}_api_key_2"
+        secondary = getattr(self, secondary_attr, None)
+
+        if secondary is not None and hasattr(secondary, "get_secret_value"):
+            secondary_value = secondary.get_secret_value().strip()
+
+            for chunk in secondary_value.split(","):
+                item = chunk.strip()
+
+                if item and item not in keys:
+                    keys.append(item)
+
+        return tuple(keys)
+
+    def get_provider_keys_or_raise(
+        self,
+        provider: ProviderName,
+    ) -> tuple[str, ...]:
+        keys = self.get_provider_keys(provider)
+
+        if not keys:
+            raise MissingAPIKeyError(
+                "Required provider API key is missing",
+                provider=provider.value,
+                details={
+                    "provider": provider.value,
+                    "env_var": constants.ENV_VAR_BY_PROVIDER.get(provider.value),
+                },
+            )
+
+        return keys
 
     @staticmethod
     def mask_secret(value: SecretStr) -> str:
@@ -369,6 +475,31 @@ class Settings(BaseSettings):
         for directory in directories:
             directory.mkdir(parents=True, exist_ok=True)
 
+    def _load_sources_config(self) -> dict[str, Any]:
+        if self._sources_config_cache is not None:
+            return self._sources_config_cache
+
+        loaded: dict[str, Any] = {}
+
+        try:
+            import yaml
+
+            config_path = (
+                Path(__file__).resolve().parent.parent / "configs" / "sources.yaml"
+            )
+
+            if config_path.exists():
+                with open(config_path, "r", encoding="utf-8") as handle:
+                    raw = yaml.safe_load(handle) or {}
+
+                if isinstance(raw, dict):
+                    loaded = raw
+        except Exception:
+            loaded = {}
+
+        self._sources_config_cache = loaded
+        return loaded
+
 
 def load_settings() -> Settings:
     try:
@@ -381,4 +512,4 @@ def load_settings() -> Settings:
         raise ConfigError(
             "Failed to load application settings",
             details={"error": str(exc)},
-        ) from exc
+        ) from excs

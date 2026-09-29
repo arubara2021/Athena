@@ -10,6 +10,7 @@ from core.exceptions import SourceFetchError
 from core.models import Source, SourcePlatform, SourceType
 from search.query_tokens import get_generic_terms, strip_filler
 from utils.cache import build_cache_key
+from utils.logger import get_logger, get_trace_logger
 from utils.text import clean_text, truncate_text
 
 
@@ -26,6 +27,8 @@ class ArxivClient(BaseHTTPClient):
             max_retries=2,
             retry_backoff_seconds=2.0,
         )
+        self._trace = get_trace_logger()
+        self._logger = get_logger(f"clients.{self.platform_name}")
 
     async def search(self, query: str, max_results: int = 10) -> list[Source]:
         cleaned_query = clean_text(query)
@@ -35,7 +38,7 @@ class ArxivClient(BaseHTTPClient):
 
         cache_key = build_cache_key(
             self.platform_name,
-            "search",
+            "search_v2",
             cleaned_query,
             max_results,
         )
@@ -48,7 +51,17 @@ class ArxivClient(BaseHTTPClient):
         search_query = self._build_search_query(cleaned_query)
 
         if not search_query:
+            self._trace.emit(
+                "arxiv_empty_query",
+                original_query=cleaned_query,
+            )
             return []
+
+        self._trace.emit(
+            "arxiv_query_built",
+            original_query=cleaned_query,
+            search_query=search_query,
+        )
 
         params = {
             "search_query": search_query,
@@ -68,15 +81,35 @@ class ArxivClient(BaseHTTPClient):
                 details={"error": str(exc)},
             ) from exc
 
+        entries = list(getattr(feed, "entries", []) or [])
+
+        if not entries:
+            self._trace.emit(
+                "arxiv_empty_result",
+                original_query=cleaned_query,
+                search_query=search_query,
+                max_results=max_results,
+            )
+            return []
+
         sources: list[Source] = []
 
-        for entry in getattr(feed, "entries", [])[:max_results]:
+        for entry in entries[:max_results]:
             source = self._map_entry(entry)
 
             if source is not None:
                 sources.append(source)
 
-        self._cache_set(cache_key, sources)
+        if sources:
+            self._cache_set(cache_key, sources)
+
+        self._trace.emit(
+            "arxiv_result",
+            original_query=cleaned_query,
+            search_query=search_query,
+            sources_found=len(sources),
+        )
+
         return sources
 
     def _build_search_query(self, query: str) -> str:
@@ -87,35 +120,46 @@ class ArxivClient(BaseHTTPClient):
         raw_tokens = re.findall(r"[a-z0-9+#.]+", cleaned)
         generic_terms = get_generic_terms()
 
-        tokens: list[str] = []
+        original_words: list[str] = []
 
         for token in raw_tokens:
             if len(token) < 2:
                 continue
 
+            if token not in original_words:
+                original_words.append(token)
+
+        meaningful_tokens: list[str] = []
+
+        for token in original_words:
             if token in generic_terms:
                 continue
 
-            if token not in tokens:
-                tokens.append(token)
+            meaningful_tokens.append(token)
 
-        if not tokens:
-            phrase = clean_text(query)
-            phrase = re.sub(r"[\"']", " ", phrase)
-            phrase = re.sub(r"[\\(){}\[\]^~*?:/]", " ", phrase)
+        if len(meaningful_tokens) >= 2:
+            selected = meaningful_tokens[:5]
+            return " AND ".join(f"all:{token}" for token in selected)
+
+        if len(meaningful_tokens) == 1 and len(original_words) >= 2:
+            phrase = " ".join(original_words[:4])
             phrase = re.sub(r"\s+", " ", phrase).strip()
 
-            if not phrase:
-                return ""
+            if phrase:
+                return f'all:"{phrase}"'
 
-            return f'all:"{phrase[:60]}"'
+        if len(meaningful_tokens) == 1:
+            return f"all:{meaningful_tokens[0]}"
 
-        selected_tokens = tokens[:5]
+        phrase_source = clean_text(query)
+        phrase_source = re.sub(r"[\"']", " ", phrase_source)
+        phrase_source = re.sub(r"[\\(){}\[\]^~*?:/]", " ", phrase_source)
+        phrase_source = re.sub(r"\s+", " ", phrase_source).strip()
 
-        if len(selected_tokens) == 1:
-            return f"all:{selected_tokens[0]}"
+        if not phrase_source:
+            return ""
 
-        return " AND ".join(f"all:{token}" for token in selected_tokens)
+        return f'all:"{phrase_source[:60]}"'
 
     def _map_entry(self, entry: dict) -> Source | None:
         try:

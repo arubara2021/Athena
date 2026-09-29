@@ -1,14 +1,17 @@
 from __future__ import annotations
 
-import difflib
-import re
 from typing import Any
 
 from core.exceptions import ValidationError as SearchValidationError
-from core.models import Source, SourcePlatform, SourceType
+from core.models import Difficulty, Source, SourcePlatform, SourceType
 from core.schemas import SearchQuerySchema
-from search.query_tokens import concept_tokens, get_generic_terms, strip_filler, tokenize
-from utils.logger import get_logger
+from search.query_profile import QueryProfile, build_query_profile
+from search.relevance import (
+    passes_concept_presence_gate,
+    passes_title_fingerprint_gate,
+    source_relevance_vector,
+)
+from utils.logger import get_logger, get_trace_logger
 from utils.text import clean_text
 from utils.url import is_valid_url
 
@@ -19,30 +22,29 @@ class SourceValidator:
         min_title_length: int = 3,
         max_title_length: int = 500,
         max_abstract_length: int = 5000,
-        strict_threshold: float = 0.18,
-        relaxed_threshold: float = 0.03,
-        fuzzy_match_ratio: float = 0.82,
-        max_core_tokens: int = 12,
-        max_phrases: int = 24,
+        strict_threshold: float = 0.30,
+        relaxed_threshold: float = 0.12,
     ) -> None:
         self._min_title_length = max(1, min_title_length)
         self._max_title_length = max(self._min_title_length, max_title_length)
         self._max_abstract_length = max(100, max_abstract_length)
         self._strict_threshold = max(0.0, min(1.0, strict_threshold))
         self._relaxed_threshold = max(0.0, min(1.0, relaxed_threshold))
-        self._fuzzy_match_ratio = max(0.5, min(1.0, fuzzy_match_ratio))
-        self._max_core_tokens = max(4, max_core_tokens)
-        self._max_phrases = max(4, max_phrases)
         self._logger = get_logger("search.validator")
+        self._trace = get_trace_logger()
+        self.last_warnings: list[str] = []
 
     def validate_query(self, query: Any) -> SearchQuerySchema:
         try:
             if isinstance(query, SearchQuerySchema):
                 return query
+
             if isinstance(query, str):
                 return SearchQuerySchema(topic=query)
+
             if isinstance(query, dict):
                 return SearchQuerySchema.model_validate(query)
+
             raise SearchValidationError(
                 "Unsupported search query type",
                 details={"type": type(query).__name__},
@@ -60,31 +62,113 @@ class SourceValidator:
         sources: list[Any],
         query: Any = None,
         strict: bool = True,
+        profile: QueryProfile | None = None,
     ) -> list[Source]:
-        valid_sources: list[Source] = []
+        self.last_warnings = []
 
-        topic = self._extract_topic(query)
-        primary_concept = self._extract_primary_concept(query)
-        keywords = self._extract_keywords(query)
-        short_queries = self._extract_short_queries(query)
+        query_schema = self._coerce_query(query)
 
-        core_tokens = self._build_core_tokens(topic, primary_concept, keywords)
-        phrases = self._build_phrases(topic, primary_concept, keywords, short_queries)
+        if profile is None:
+            profile = self._build_profile(query_schema)
 
         threshold = self._strict_threshold if strict else self._relaxed_threshold
+        beginner_only = profile.level_profile == "beginner"
+
+        valid_sources: list[Source] = []
+        dropped_counts: dict[str, int] = {}
+        dropped_samples: list[dict[str, Any]] = []
+        input_count = 0
 
         for source in sources:
+            input_count += 1
+
             if not self.validate_source(source):
+                self._record_drop(
+                    dropped_counts,
+                    dropped_samples,
+                    source,
+                    "structural",
+                )
                 continue
 
-            if not core_tokens and not phrases:
-                valid_sources.append(source)
+            if strict:
+                if not passes_concept_presence_gate(source, profile):
+                    self._record_drop(
+                        dropped_counts,
+                        dropped_samples,
+                        source,
+                        "concept_presence",
+                    )
+                    continue
+
+                if not passes_title_fingerprint_gate(source, profile):
+                    self._record_drop(
+                        dropped_counts,
+                        dropped_samples,
+                        source,
+                        "title_fingerprint",
+                    )
+                    continue
+
+                if beginner_only and self._is_advanced_source(source):
+                    self._record_drop(
+                        dropped_counts,
+                        dropped_samples,
+                        source,
+                        "level_advanced_for_beginner",
+                    )
+                    continue
+            else:
+                if not passes_concept_presence_gate(source, profile):
+                    self._record_drop(
+                        dropped_counts,
+                        dropped_samples,
+                        source,
+                        "concept_presence",
+                    )
+                    continue
+
+            try:
+                vector, score = source_relevance_vector(source, profile)
+            except Exception as exc:
+                self._logger.warning(f"Relevance vector failed: {exc}")
+                self._record_drop(
+                    dropped_counts,
+                    dropped_samples,
+                    source,
+                    "relevance_error",
+                )
                 continue
 
-            relevance = self._relevance_score(source, core_tokens, phrases)
+            if score < threshold:
+                self._record_drop(
+                    dropped_counts,
+                    dropped_samples,
+                    source,
+                    "below_threshold",
+                    score=round(score, 4),
+                )
+                continue
 
-            if relevance >= threshold:
-                valid_sources.append(source)
+            self._annotate_source(source, vector, score, profile, beginner_only)
+
+            valid_sources.append(source)
+
+        self._emit_completion(
+            valid_sources=valid_sources,
+            dropped_counts=dropped_counts,
+            dropped_samples=dropped_samples,
+            strict=strict,
+            profile=profile,
+            threshold=threshold,
+            input_count=input_count,
+        )
+
+        if strict and input_count > 0 and not valid_sources:
+            self._add_warning("strict_dropped_all_sources")
+
+        if beginner_only and not valid_sources:
+            self._add_warning("no_beginner_sources_found")
 
         return valid_sources
 
@@ -94,6 +178,9 @@ class SourceValidator:
         except Exception as exc:
             self._logger.warning(f"Source validation failed: {exc}")
             return False
+
+    def get_warnings(self) -> list[str]:
+        return list(self.last_warnings)
 
     def _validate_source(self, source: Any) -> bool:
         if not isinstance(source, Source):
@@ -141,314 +228,199 @@ class SourceValidator:
 
         return True
 
-    def _extract_topic(self, query: Any) -> str:
+    def _coerce_query(self, query: Any) -> Any:
+        if query is None:
+            return None
+
         if isinstance(query, SearchQuerySchema):
-            return clean_text(getattr(query, "corrected_topic", "") or query.topic)
+            return query
 
         if isinstance(query, str):
-            return clean_text(query)
+            try:
+                return SearchQuerySchema(topic=query)
+            except Exception:
+                return {"topic": query}
 
         if isinstance(query, dict):
-            return clean_text(query.get("corrected_topic", "") or query.get("topic", ""))
+            try:
+                return SearchQuerySchema.model_validate(query)
+            except Exception:
+                return query
 
-        return ""
+        return None
 
-    def _extract_primary_concept(self, query: Any) -> str:
-        if isinstance(query, SearchQuerySchema):
-            return clean_text(
-                getattr(query, "primary_concept", "")
-                or getattr(query, "corrected_topic", "")
-                or query.topic
+    def _build_profile(self, query_schema: Any) -> QueryProfile:
+        if query_schema is None:
+            return build_query_profile("")
+
+        if isinstance(query_schema, SearchQuerySchema):
+            return build_query_profile(
+                query=query_schema.topic or "",
+                corrected_topic=getattr(query_schema, "corrected_topic", "") or "",
+                primary_concept=getattr(query_schema, "primary_concept", "") or "",
+                level_profile=getattr(query_schema, "level_profile", "") or "",
+                intent=getattr(query_schema, "intent", "") or "",
+                target_domains=list(getattr(query_schema, "target_domains", []) or []),
+                target_formats=list(getattr(query_schema, "target_formats", []) or []),
+                preserve_tokens=list(getattr(query_schema, "preserve_tokens", []) or []),
+                original_query=getattr(query_schema, "topic", "") or "",
             )
 
-        if isinstance(query, str):
-            return clean_text(query)
-
-        if isinstance(query, dict):
-            return clean_text(
-                query.get("primary_concept", "")
-                or query.get("corrected_topic", "")
-                or query.get("topic", "")
+        if isinstance(query_schema, dict):
+            return build_query_profile(
+                query=str(query_schema.get("topic", "") or ""),
+                corrected_topic=str(query_schema.get("corrected_topic", "") or ""),
+                primary_concept=str(query_schema.get("primary_concept", "") or ""),
+                level_profile=str(query_schema.get("level_profile", "") or ""),
+                intent=str(query_schema.get("intent", "") or ""),
+                target_domains=list(query_schema.get("target_domains", []) or []),
+                target_formats=list(query_schema.get("target_formats", []) or []),
+                preserve_tokens=list(query_schema.get("preserve_tokens", []) or []),
+                original_query=str(query_schema.get("topic", "") or ""),
             )
 
-        return ""
+        if isinstance(query_schema, str):
+            return build_query_profile(
+                query=query_schema,
+                original_query=query_schema,
+            )
 
-    def _extract_keywords(self, query: Any) -> list[str]:
-        values: list[Any] = []
+        return build_query_profile("")
 
-        if isinstance(query, SearchQuerySchema):
-            values.extend(getattr(query, "keywords", []) or [])
-        elif isinstance(query, dict):
-            values.extend(query.get("keywords", []) or [])
+    def _is_advanced_source(self, source: Source) -> bool:
+        difficulty = getattr(source, "difficulty", None)
 
-        cleaned: list[str] = []
-
-        for value in values:
-            text = clean_text(value)
-            if text and text not in cleaned:
-                cleaned.append(text)
-
-        return cleaned[:16]
-
-    def _extract_short_queries(self, query: Any) -> list[str]:
-        values: list[Any] = []
-
-        if isinstance(query, SearchQuerySchema):
-            values.extend(getattr(query, "short_search_queries", []) or [])
-        elif isinstance(query, dict):
-            values.extend(query.get("short_search_queries", []) or [])
-
-        cleaned: list[str] = []
-
-        for value in values:
-            text = clean_text(value)
-            if text and text not in cleaned:
-                cleaned.append(text)
-
-        return cleaned[:16]
-
-    def _build_core_tokens(
-        self,
-        topic: str,
-        primary_concept: str,
-        keywords: list[str],
-    ) -> set[str]:
-        tokens: set[str] = set()
-
-        if primary_concept:
-            tokens.update(concept_tokens(primary_concept))
-
-        if topic and topic != primary_concept:
-            tokens.update(concept_tokens(topic))
-
-        for keyword in keywords:
-            tokens.update(concept_tokens(keyword))
-
-        if not tokens and topic:
-            tokens.update(tokenize(topic.lower()))
-
-        if len(tokens) > self._max_core_tokens:
-            return set(list(tokens)[: self._max_core_tokens])
-
-        return tokens
-
-    def _build_phrases(
-        self,
-        topic: str,
-        primary_concept: str,
-        keywords: list[str],
-        short_queries: list[str],
-    ) -> list[str]:
-        values: list[str] = []
-
-        if primary_concept:
-            values.append(primary_concept)
-
-        if topic and topic != primary_concept:
-            values.append(topic)
-
-        values.extend(keywords)
-        values.extend(short_queries)
-
-        phrases: list[str] = []
-        seen: set[str] = set()
-
-        for value in values:
-            normalized = self._normalize_phrase(value)
-
-            if not normalized:
-                continue
-
-            for phrase in self._phrase_variants(normalized):
-                if phrase in seen:
-                    continue
-
-                seen.add(phrase)
-                phrases.append(phrase)
-
-                if len(phrases) >= self._max_phrases:
-                    return phrases
-
-        return phrases
-
-    def _normalize_phrase(self, value: Any) -> str:
-        text = strip_filler(clean_text(value)).lower()
-        text = re.sub(r"[^\w\s+#.-]", " ", text)
-        text = re.sub(r"\s+", " ", text).strip()
-
-        if not text:
-            return ""
-
-        words = text.split()
-        generic_terms = get_generic_terms()
-
-        meaningful = [
-            word
-            for word in words
-            if len(word) >= 2 and word not in generic_terms
-        ]
-
-        if meaningful:
-            return " ".join(meaningful)
-
-        return " ".join([word for word in words if len(word) >= 2])
-
-    def _phrase_variants(self, phrase: str) -> list[str]:
-        words = phrase.split()
-
-        if len(words) < 2:
-            return []
-
-        variants: list[str] = []
-
-        variants.append(" ".join(words))
-
-        for index in range(len(words) - 1):
-            variants.append(" ".join(words[index:index + 2]))
-
-        for index in range(len(words) - 2):
-            variants.append(" ".join(words[index:index + 3]))
-
-        if len(words) >= 2:
-            variants.append(" ".join(words[:2]))
-            variants.append(" ".join(words[-2:]))
-
-        cleaned: list[str] = []
-        seen: set[str] = set()
-
-        for variant in variants:
-            normalized = re.sub(r"\s+", " ", variant).strip()
-
-            if len(normalized) < 4:
-                continue
-
-            if normalized in seen:
-                continue
-
-            seen.add(normalized)
-            cleaned.append(normalized)
-
-        return cleaned[:12]
-
-    def _relevance_score(
-        self,
-        source: Source,
-        core_tokens: set[str],
-        phrases: list[str],
-    ) -> float:
-        if not core_tokens and not phrases:
-            return 1.0
-
-        title_text = source.title.lower()
-        all_text = self._relevance_text(source).lower()
-
-        title_tokens = set(tokenize(title_text))
-        all_tokens = set(tokenize(all_text))
-
-        phrase_title = False
-        phrase_all = False
-
-        for phrase in phrases:
-            if phrase in title_text:
-                phrase_title = True
-
-            if phrase in all_text:
-                phrase_all = True
-
-        matched_title = self._count_matched(core_tokens, title_tokens)
-        matched_all = self._count_matched(core_tokens, all_tokens)
-
-        token_count = len(core_tokens) if core_tokens else 0
-
-        title_ratio = matched_title / token_count if token_count else 0.0
-        all_ratio = matched_all / token_count if token_count else 0.0
-
-        score = 0.0
-
-        if phrase_title:
-            score = max(score, 0.95)
-        elif phrase_all:
-            score = max(score, 0.75)
-        else:
-            score = (title_ratio * 0.65) + (all_ratio * 0.35)
-
-        if token_count >= 2 and not phrase_title and not phrase_all:
-            if matched_all < 2:
-                score = min(score, 0.08)
-            elif matched_title < 1:
-                score = min(score, 0.12)
-
-        platform = self._enum_value(source.platform)
-        source_type = self._enum_value(source.source_type)
-
-        if platform == "wikipedia" or source_type == "documentation":
-            if score >= 0.25:
-                score += 0.05
-
-        return max(0.0, min(1.0, score))
-
-    def _count_matched(self, core_tokens: set[str], candidate_tokens: set[str]) -> int:
-        if not core_tokens:
-            return 0
-
-        matched = 0
-
-        for token in core_tokens:
-            if self._token_exists(token, candidate_tokens):
-                matched += 1
-
-        return matched
-
-    def _token_exists(self, token: str, candidate_tokens: set[str]) -> bool:
-        if token in candidate_tokens:
-            return True
-
-        if len(token) < 4:
+        if difficulty is None:
             return False
 
-        for candidate in candidate_tokens:
-            if candidate == token:
-                return True
+        if isinstance(difficulty, Difficulty):
+            return difficulty == Difficulty.ADVANCED
 
-            if candidate.startswith(token) or token.startswith(candidate):
-                return True
+        text = str(difficulty).strip().lower()
 
-            if abs(len(candidate) - len(token)) <= 2:
-                ratio = difflib.SequenceMatcher(None, token, candidate).ratio()
+        return text == "advanced"
 
-                if ratio >= self._fuzzy_match_ratio:
-                    return True
+    def _annotate_source(
+        self,
+        source: Source,
+        vector: dict[str, float],
+        score: float,
+        profile: QueryProfile,
+        beginner_only: bool,
+    ) -> None:
+        try:
+            source.metadata["validator_relevance"] = round(score, 4)
+            source.metadata["validator_vector"] = {
+                key: round(value, 4) for key, value in vector.items()
+            }
+            source.metadata["validator_level_profile"] = profile.level_profile or ""
+            source.metadata["validator_has_abbreviation"] = bool(
+                profile.has_abbreviation
+            )
 
-        return False
+            difficulty = getattr(source, "difficulty", None)
+            difficulty_text = str(
+                getattr(difficulty, "value", difficulty) or ""
+            ).strip().lower()
 
-    def _relevance_text(self, source: Source) -> str:
-        metadata = source.metadata if isinstance(source.metadata, dict) else {}
+            is_advanced = difficulty_text == "advanced"
+            is_beginner_safe = difficulty_text in {"beginner", "intermediate"}
 
-        description = clean_text(metadata.get("description", ""))
-        summary = clean_text(metadata.get("summary", ""))
+            source.metadata["validator_beginner_safe"] = is_beginner_safe
+            source.metadata["validator_advanced_signal"] = is_advanced
 
-        topics = metadata.get("topics", [])
-        tags = metadata.get("tags", [])
+            if beginner_only:
+                if is_advanced:
+                    source.metadata["learner_alignment_penalty"] = 0.20
+                elif is_beginner_safe:
+                    source.metadata["learner_alignment_boost"] = 1.25
+        except Exception:
+            pass
 
-        parts = [source.title]
+    def _record_drop(
+        self,
+        counter: dict[str, int],
+        samples: list[dict[str, Any]],
+        source: Any,
+        reason: str,
+        score: float | None = None,
+    ) -> None:
+        counter[reason] = counter.get(reason, 0) + 1
 
-        if source.abstract:
-            parts.append(source.abstract)
+        if len(samples) >= 50:
+            return
 
-        if description:
-            parts.append(description)
+        try:
+            title = clean_text(getattr(source, "title", ""))[:80]
+            source_id = str(getattr(source, "source_id", ""))
+            platform = self._enum_value(getattr(source, "platform", ""))
+        except Exception:
+            title = ""
+            source_id = ""
+            platform = ""
 
-        if summary:
-            parts.append(summary)
+        entry = {
+            "source_id": source_id,
+            "title": title,
+            "platform": platform,
+            "reason": reason,
+        }
 
-        if isinstance(topics, list):
-            parts.extend(str(item) for item in topics if item)
+        if score is not None:
+            entry["score"] = score
 
-        if isinstance(tags, list):
-            parts.extend(str(item) for item in tags if item)
+        samples.append(entry)
 
-        return " ".join(parts)
+        try:
+            self._trace.emit(
+                "validator_drop",
+                source_id=source_id,
+                title=title,
+                platform=platform,
+                reason=reason,
+                score=score,
+            )
+        except Exception:
+            pass
+
+    def _emit_completion(
+        self,
+        valid_sources: list[Source],
+        dropped_counts: dict[str, int],
+        dropped_samples: list[dict[str, Any]],
+        strict: bool,
+        profile: QueryProfile,
+        threshold: float,
+        input_count: int,
+    ) -> None:
+        try:
+            self._trace.emit(
+                "validator_completed",
+                strict=strict,
+                threshold=round(threshold, 4),
+                level_profile=profile.level_profile or "",
+                concept_phrase=profile.concept_phrase or "",
+                concept_fingerprint=profile.concept_fingerprint,
+                fingerprint_size=len(profile.concept_fingerprint),
+                user_typed_tokens=profile.user_typed_tokens,
+                user_typed_specificity=round(profile.user_typed_specificity, 4),
+                has_abbreviation=profile.has_abbreviation,
+                has_specific_concept=profile.has_specific_concept,
+                input_count=input_count,
+                valid_count=len(valid_sources),
+                dropped_total=sum(dropped_counts.values()),
+                dropped_counts=dict(dropped_counts),
+                dropped_samples=dropped_samples,
+            )
+        except Exception:
+            pass
+
+    def _add_warning(self, warning: str) -> None:
+        if warning not in self.last_warnings:
+            self.last_warnings.append(warning)
+
+        self._logger.warning(warning)
 
     @staticmethod
     def _enum_value(value: Any) -> str:
-        return str(getattr(value, "value", value))
+        return str(getattr(value, "value", value) or "")

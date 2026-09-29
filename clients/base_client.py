@@ -11,6 +11,7 @@ import httpx
 
 from core import constants
 from core.exceptions import SourceFetchError
+from utils.async_helpers import loop_is_alive, safe_aclose
 from utils.cache import default_cache_registry
 from utils.hashing import stable_hash
 from utils.logger import get_logger
@@ -144,11 +145,24 @@ class BaseHTTPClient:
                 float(fetch_config["retry_backoff_seconds"]),
             )
 
-        self._timeout = max(5.0, min(60.0, resolved_timeout))
+        per_platform_timeout = platform_config.get("per_platform_timeout_seconds")
+
+        if per_platform_timeout is not None:
+            try:
+                candidate = float(per_platform_timeout)
+
+                if candidate > 0.0:
+                    resolved_timeout = candidate
+            except Exception:
+                pass
+
+        self._timeout = max(5.0, min(120.0, resolved_timeout))
         self._max_retries = max(1, min(4, resolved_max_retries))
         self._retry_backoff_seconds = max(0.1, min(10.0, resolved_backoff))
 
         self._client: httpx.AsyncClient | None = None
+        self._client_loop: asyncio.AbstractEventLoop | None = None
+        self._last_close_error: str | None = None
         self._logger = get_logger(f"clients.{self.platform_name}")
 
         self._rate_limiter = default_rate_limiter_registry.get(
@@ -164,6 +178,18 @@ class BaseHTTPClient:
             )
         else:
             self._cache = None
+
+    @property
+    def bound_loop(self) -> asyncio.AbstractEventLoop | None:
+        return self._client_loop
+
+    @property
+    def last_close_error(self) -> str | None:
+        return self._last_close_error
+
+    @property
+    def is_closed(self) -> bool:
+        return self._client is None
 
     def _settings_platform_rate_limit(self, settings: Any) -> int | None:
         mapping = {
@@ -199,10 +225,17 @@ class BaseHTTPClient:
         return False
 
     async def close(self) -> None:
-        if self._client is not None and not self._client.is_closed:
-            await self._client.aclose()
-
+        client = self._client
+        owning_loop = self._client_loop
         self._client = None
+        self._client_loop = None
+
+        if client is None:
+            self._last_close_error = None
+            return
+
+        ok = await safe_aclose(client, loop=owning_loop, logger=self._logger)
+        self._last_close_error = None if ok else "close_failed"
 
     def _build_default_headers(self) -> dict[str, str]:
         headers = dict(constants.DEFAULT_HEADERS)
@@ -228,8 +261,43 @@ class BaseHTTPClient:
             pass
 
     async def _get_client(self) -> httpx.AsyncClient:
-        if self._client is None or self._client.is_closed:
-            self._client = httpx.AsyncClient(
+        running_loop = self._running_loop()
+        client = self._client
+
+        if client is not None and not client.is_closed:
+            if self._client_loop is running_loop:
+                return client
+
+            old_client = client
+            old_loop = self._client_loop
+            self._client = None
+            self._client_loop = None
+
+            if old_loop is None or not loop_is_alive(old_loop):
+                await safe_aclose(
+                    old_client,
+                    loop=old_loop,
+                    logger=self._logger,
+                )
+            else:
+                self._logger.warning(
+                    f"{self.platform_name} client was bound to a different "
+                    f"running loop; orphaning previous client and rebinding"
+                )
+
+                try:
+                    asyncio.run_coroutine_threadsafe(
+                        old_client.aclose(),
+                        old_loop,
+                    )
+                except Exception:
+                    pass
+        elif client is not None and client.is_closed:
+            self._client = None
+            self._client_loop = None
+
+        try:
+            new_client = httpx.AsyncClient(
                 timeout=httpx.Timeout(
                     self._timeout,
                     connect=constants.DEFAULT_CONNECT_TIMEOUT_SECONDS,
@@ -240,8 +308,18 @@ class BaseHTTPClient:
                     max_keepalive_connections=5,
                 ),
             )
+        except Exception as exc:
+            self._logger.warning(
+                f"{self.platform_name} failed to create HTTP client: {exc}"
+            )
+            raise SourceFetchError(
+                f"{self.platform_name} failed to create HTTP client",
+                details={"error": str(exc)},
+            ) from exc
 
-        return self._client
+        self._client = new_client
+        self._client_loop = running_loop
+        return new_client
 
     async def _request(
         self,
@@ -436,6 +514,13 @@ class BaseHTTPClient:
             base = min(base, 10.0)
 
         return base + random.uniform(0.0, 0.1 * max(base, 0.1))
+
+    @staticmethod
+    def _running_loop() -> asyncio.AbstractEventLoop | None:
+        try:
+            return asyncio.get_running_loop()
+        except RuntimeError:
+            return None
 
 
 class SourcePlatformValue:

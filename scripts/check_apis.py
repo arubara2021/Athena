@@ -1,193 +1,436 @@
+from __future__ import annotations
+
 import asyncio
 import json
-import os
+import sys
+import time
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
+
+ROOT = Path(__file__).resolve().parent.parent
+
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+try:
+    from core import constants
+except Exception as exc:
+    print(f"Failed to import core package from project root {ROOT}: {exc}")
+    raise SystemExit(1)
 
 import httpx
 
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except Exception:
-    pass
+OUTPUT_FILE = ROOT / "api_check_results.json"
+TIMEOUT = 15.0
 
-PROVIDERS = [
+_HEADERS = {
+    "Accept": "application/json, text/html;q=0.9, */*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "User-Agent": constants.USER_AGENT,
+}
+
+PLATFORM_CHECKS: list[dict[str, Any]] = [
     {
-        "name": "SAMBANOVA",
-        "env": "SAMBANOVA_API_KEY",
-        "url": "https://api.sambanova.ai/v1/models",
-        "auth": "bearer"
+        "platform": "pubmed",
+        "name": "PubMed E-utilities",
+        "checks": [
+            {
+                "url": f"{constants.PUBMED_BASE_URL}/esearch.fcgi?db=pubmed&term=test&retmax=1&retmode=json",
+                "kind": "json",
+            }
+        ],
     },
     {
-        "name": "GROQ",
-        "env": "GROQ_API_KEY",
-        "url": "https://api.groq.com/openai/v1/models",
-        "auth": "bearer"
+        "platform": "europe_pmc",
+        "name": "Europe PMC",
+        "checks": [
+            {
+                "url": f"{constants.EUROPE_PMC_BASE_URL}/search?query=test&format=json&pageSize=1",
+                "kind": "json",
+            }
+        ],
     },
     {
-        "name": "GOOGLE",
-        "env": "GOOGLE_API_KEY",
-        "url": "https://generativelanguage.googleapis.com/v1beta/models",
-        "auth": "google"
+        "platform": "doaj",
+        "name": "DOAJ API",
+        "checks": [
+            {
+                "url": f"{constants.DOAJ_BASE_URL}/search/articles/test?pageSize=1",
+                "kind": "json",
+            }
+        ],
     },
     {
-        "name": "MISTRAL",
-        "env": "MISTRAL_API_KEY",
-        "url": "https://api.mistral.ai/v1/models",
-        "auth": "bearer"
+        "platform": "crossref",
+        "name": "Crossref API",
+        "checks": [
+            {
+                "url": f"{constants.CROSSREF_BASE_URL}/works?query=test&rows=1",
+                "kind": "json",
+            }
+        ],
     },
     {
-        "name": "NVIDIA",
-        "env": "NVIDIA_API_KEY",
-        "url": "https://integrate.api.nvidia.com/v1/models",
-        "auth": "bearer"
-    }
+        "platform": "open_library",
+        "name": "Open Library",
+        "checks": [
+            {
+                "url": f"{constants.OPEN_LIBRARY_BASE_URL}/search.json?q=test&limit=1",
+                "kind": "json",
+            }
+        ],
+    },
+    {
+        "platform": "internet_archive",
+        "name": "Internet Archive",
+        "checks": [
+            {
+                "url": f"{constants.INTERNET_ARCHIVE_BASE_URL}/advancedsearch.php?q=test&fl[]=identifier&rows=1&output=json",
+                "kind": "json",
+            }
+        ],
+    },
+    {
+        "platform": "wikibooks",
+        "name": "Wikibooks",
+        "checks": [
+            {
+                "url": "https://en.wikibooks.org/w/rest.php/v1/search/page?q=test&limit=1",
+                "kind": "json",
+            }
+        ],
+    },
+    {
+        "platform": "openstax",
+        "name": "OpenStax",
+        "checks": [
+            {
+                "url": "https://openstax.org/search?search_string=test",
+                "kind": "html",
+            }
+        ],
+    },
+    {
+        "platform": "mit_ocw",
+        "name": "MIT OpenCourseWare",
+        "checks": [
+            {
+                "url": "https://ocw.mit.edu/search/?t=test",
+                "kind": "html",
+            }
+        ],
+    },
+    {
+        "platform": "libretexts",
+        "name": "LibreTexts",
+        "checks": [
+            {
+                "url": "https://chem.libretexts.org/Special:Search?search=test&full=1",
+                "kind": "html",
+                "marker": "/wiki/",
+            },
+            {
+                "url": "https://socialsci.libretexts.org/Special:Search?search=test&full=1",
+                "kind": "html",
+                "marker": "/wiki/",
+            },
+            {
+                "url": "https://bio.libretexts.org/Special:Search?search=test&full=1",
+                "kind": "html",
+                "marker": "/wiki/",
+            },
+            {
+                "url": "https://chem.libretexts.org/w/api.php?action=query&list=search&srsearch=test&srlimit=1&format=json",
+                "kind": "json",
+            },
+        ],
+    },
+    {
+        "platform": "wikiversity",
+        "name": "Wikiversity",
+        "checks": [
+            {
+                "url": "https://en.wikiversity.org/w/rest.php/v1/search/page?q=test&limit=1",
+                "kind": "json",
+            }
+        ],
+    },
+    {
+        "platform": "arxiv",
+        "name": "arXiv API",
+        "checks": [
+            {
+                "url": f"{constants.ARXIV_BASE_URL}/query?search_query=all:test&max_results=1",
+                "kind": "json",
+            }
+        ],
+    },
+    {
+        "platform": "openalex",
+        "name": "OpenAlex",
+        "checks": [
+            {
+                "url": f"{constants.OPENALEX_BASE_URL}/works?search=test&per_page=1",
+                "kind": "json",
+            }
+        ],
+    },
+    {
+        "platform": "wikipedia",
+        "name": "Wikipedia",
+        "checks": [
+            {
+                "url": "https://en.wikipedia.org/w/rest.php/v1/search/page?q=test&limit=1",
+                "kind": "json",
+            }
+        ],
+    },
+    {
+        "platform": "github",
+        "name": "GitHub API",
+        "checks": [
+            {
+                "url": f"{constants.GITHUB_BASE_URL}/search/repositories?q=test&per_page=1",
+                "kind": "json",
+            }
+        ],
+    },
+    {
+        "platform": "huggingface",
+        "name": "Hugging Face",
+        "checks": [
+            {
+                "url": f"{constants.HUGGINGFACE_BASE_URL}/models?search=test&limit=1",
+                "kind": "json",
+            }
+        ],
+    },
+    {
+        "platform": "semantic_scholar",
+        "name": "Semantic Scholar",
+        "checks": [
+            {
+                "url": f"{constants.SEMANTIC_SCHOLAR_BASE_URL}/paper/search?query=test&limit=1",
+                "kind": "json",
+            }
+        ],
+    },
 ]
 
 
-def mask_key(value: str) -> str:
-    value = value.strip()
-    if not value:
-        return ""
-    if len(value) <= 4:
-        return "****"
-    return f"****{value[-4:]}"
+async def check_route(client: httpx.AsyncClient, route: dict[str, Any]) -> dict[str, Any]:
+    delay = 1.0
+    last_error = None
+
+    for attempt in range(2):
+        start = time.perf_counter()
+
+        try:
+            response = await client.get(route["url"], timeout=TIMEOUT)
+        except httpx.TimeoutException:
+            last_error = f"Request timed out after {TIMEOUT}s"
+            if attempt == 0:
+                await asyncio.sleep(delay)
+                continue
+
+            return {
+                "url": route["url"],
+                "status": "timeout",
+                "http_status": None,
+                "latency_ms": round((time.perf_counter() - start) * 1000, 1),
+                "has_data": False,
+                "error": last_error,
+            }
+        except httpx.ConnectError as exc:
+            last_error = str(exc)[:200]
+            if attempt == 0:
+                await asyncio.sleep(delay)
+                continue
+
+            return {
+                "url": route["url"],
+                "status": "connection_error",
+                "http_status": None,
+                "latency_ms": round((time.perf_counter() - start) * 1000, 1),
+                "has_data": False,
+                "error": last_error,
+            }
+        except Exception as exc:
+            last_error = str(exc)[:200]
+            if attempt == 0:
+                await asyncio.sleep(delay)
+                continue
+
+            return {
+                "url": route["url"],
+                "status": "error",
+                "http_status": None,
+                "latency_ms": round((time.perf_counter() - start) * 1000, 1),
+                "has_data": False,
+                "error": last_error,
+            }
+
+        latency_ms = round((time.perf_counter() - start) * 1000, 1)
+        status_code = response.status_code
+
+        if status_code >= 500 and attempt == 0:
+            await asyncio.sleep(delay)
+            continue
+
+        if status_code == 200:
+            has_data = False
+            kind = str(route.get("kind", "json")).lower()
+
+            if kind == "json":
+                try:
+                    data = response.json()
+                    if isinstance(data, dict) and len(data) > 0:
+                        has_data = True
+                    elif isinstance(data, list) and len(data) > 0:
+                        has_data = True
+                except Exception:
+                    has_data = False
+            else:
+                text = response.text
+                marker = str(route.get("marker", "") or "")
+
+                if marker:
+                    has_data = len(text) > 50 and marker in text
+                else:
+                    has_data = len(text) > 50
+
+            return {
+                "url": route["url"],
+                "status": "ok",
+                "http_status": status_code,
+                "latency_ms": latency_ms,
+                "has_data": has_data,
+                "error": None,
+            }
+
+        if status_code == 429:
+            status = "rate_limited"
+        elif status_code in (401, 403):
+            status = "auth_required"
+        elif status_code == 404:
+            status = "not_found"
+        elif status_code >= 500:
+            status = "server_error"
+        else:
+            status = f"http_{status_code}"
+
+        return {
+            "url": route["url"],
+            "status": status,
+            "http_status": status_code,
+            "latency_ms": latency_ms,
+            "has_data": False,
+            "error": None,
+        }
+
+    return {
+        "url": route["url"],
+        "status": "error",
+        "http_status": None,
+        "latency_ms": 0.0,
+        "has_data": False,
+        "error": last_error,
+    }
 
 
-def extract_models(payload: Any) -> list[str]:
-    items: list[Any] = []
+async def check_platform(client: httpx.AsyncClient, check: dict[str, Any]) -> dict[str, Any]:
+    best: dict[str, Any] | None = None
+    last: dict[str, Any] | None = None
 
-    if isinstance(payload, dict):
-        for key in ("data", "models", "results", "items"):
-            value = payload.get(key)
-            if isinstance(value, list):
-                items = value
+    for route in check["checks"]:
+        route_result = await check_route(client, route)
+        last = route_result
+
+        if route_result["status"] == "ok":
+            best = route_result
+            if route_result["has_data"]:
                 break
 
-        if not items and payload.get("object") == "list":
-            data = payload.get("data")
-            if isinstance(data, list):
-                items = data
+    if best is None:
+        best = last
 
-    elif isinstance(payload, list):
-        items = payload
+    if best is None:
+        best = {
+            "url": "",
+            "status": "error",
+            "http_status": None,
+            "latency_ms": 0.0,
+            "has_data": False,
+            "error": "No route checked",
+        }
 
-    models = set()
-
-    for item in items:
-        if isinstance(item, str):
-            models.add(item)
-        elif isinstance(item, dict):
-            for field in ("id", "name", "model", "slug", "displayName"):
-                candidate = item.get(field)
-                if isinstance(candidate, str) and candidate:
-                    models.add(candidate)
-                    break
-
-    return sorted(models)
-
-
-async def request_once(
-    client: httpx.AsyncClient,
-    provider: dict[str, str],
-    key: str
-) -> tuple[bool, list[str], str]:
-    headers = {
-        "Accept": "application/json"
+    return {
+        "platform": check["platform"],
+        "name": check["name"],
+        "url": best["url"],
+        "auth_required": False,
+        "status": best["status"],
+        "http_status": best["http_status"],
+        "latency_ms": best["latency_ms"],
+        "error": best.get("error"),
+        "has_data": best["has_data"],
+        "checked_at": datetime.now(timezone.utc).isoformat(),
     }
 
-    if provider["auth"] == "bearer":
-        headers["Authorization"] = f"Bearer {key}"
-    elif provider["auth"] == "google":
-        headers["x-goog-api-key"] = key
 
-    try:
-        response = await client.get(provider["url"], headers=headers)
+async def run_all_checks() -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = []
 
-        if response.status_code == 200:
-            try:
-                payload = response.json()
-            except Exception:
-                return False, [], "invalid_json_response"
+    async with httpx.AsyncClient(follow_redirects=True, headers=_HEADERS) as client:
+        for check in PLATFORM_CHECKS:
+            result = await check_platform(client, check)
+            results.append(result)
 
-            return True, extract_models(payload), "ok"
+            status_icon = "OK" if result["status"] == "ok" else "FAIL"
 
-        return False, [], f"http_{response.status_code}"
+            print(
+                f"  [{status_icon}] {result['name']:<25} "
+                f"status={result['status']:<15} "
+                f"latency={result['latency_ms']:.0f}ms "
+                f"data={'yes' if result['has_data'] else 'no'}"
+            )
 
-    except httpx.TimeoutException:
-        return False, [], "timeout"
-
-    except httpx.HTTPError as exc:
-        return False, [], exc.__class__.__name__
-
-    except Exception as exc:
-        return False, [], exc.__class__.__name__
+    return results
 
 
-async def check_provider(
-    client: httpx.AsyncClient,
-    provider: dict[str, str]
-) -> dict[str, Any]:
-    key = os.getenv(provider["env"], "").strip()
+def build_report(results: list[dict[str, Any]]) -> dict[str, Any]:
+    ok_count = sum(1 for r in results if r["status"] == "ok")
+    fail_count = sum(1 for r in results if r["status"] != "ok")
+    with_data = sum(1 for r in results if r["has_data"])
 
-    result: dict[str, Any] = {
-        "provider": provider["name"],
-        "env_var": provider["env"],
-        "key_present": bool(key),
-        "key_masked": mask_key(key),
-        "working": False,
-        "model_count": 0,
-        "models": [],
-        "error": None
+    return {
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+        "total_platforms": len(results),
+        "ok_count": ok_count,
+        "fail_count": fail_count,
+        "platforms_with_data": with_data,
+        "platforms": results,
     }
-
-    if not key:
-        result["error"] = "missing_api_key"
-        return result
-
-    last_error = "unknown_error"
-
-    for attempt in range(3):
-        if attempt > 0:
-            await asyncio.sleep(0.5 * attempt)
-
-        working, models, error = await request_once(client, provider, key)
-
-        if working:
-            result["working"] = True
-            result["models"] = models
-            result["model_count"] = len(models)
-            result["error"] = None
-            return result
-
-        last_error = error
-
-    result["error"] = last_error
-    return result
 
 
 async def main() -> None:
-    timeout = httpx.Timeout(30.0, connect=10.0)
-    limits = httpx.Limits(max_connections=5, max_keepalive_connections=2)
+    print("=" * 60)
+    print("ATHENA API HEALTH CHECK")
+    print("=" * 60)
+    print()
 
-    async with httpx.AsyncClient(
-        timeout=timeout,
-        limits=limits,
-        follow_redirects=True
-    ) as client:
-        tasks = [check_provider(client, provider) for provider in PROVIDERS]
-        results = await asyncio.gather(*tasks)
+    results = await run_all_checks()
+    report = build_report(results)
 
-    working_count = sum(1 for item in results if item["working"])
+    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+        json.dump(report, f, indent=2, ensure_ascii=False)
 
-    summary = {
-        "total_providers": len(results),
-        "working_providers": working_count,
-        "not_working_providers": len(results) - working_count,
-        "results": results
-    }
-
-    print(json.dumps(summary, indent=2, ensure_ascii=False))
+    print()
+    print(f"Results saved to: {OUTPUT_FILE}")
+    print(f"OK: {report['ok_count']} / {report['total_platforms']}")
+    print(f"Platforms with data: {report['platforms_with_data']}")
+    print()
 
 
 if __name__ == "__main__":

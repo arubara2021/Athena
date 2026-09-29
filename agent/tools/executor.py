@@ -8,6 +8,7 @@ from typing import Any
 from pydantic import Field
 
 from core.models import CoreModel, ToolCall
+from core import constants
 from agent.tools.registry import ToolRegistry
 from utils.logger import get_logger, get_trace_logger
 
@@ -26,20 +27,35 @@ class ToolExecutor:
         self,
         registry: ToolRegistry,
         cost_tracker: Any | None = None,
-        default_timeout: float = 60.0,
+        default_timeout: float | None = None,
     ) -> None:
         self._registry = registry
         self._cost_tracker = cost_tracker
-        self._default_timeout = default_timeout
+
+        resolved_timeout = (
+            default_timeout
+            if default_timeout is not None
+            else constants.TOOL_DEFAULT_TIMEOUT
+        )
+
+        self._default_timeout = max(
+            constants.TOOL_TIMEOUT_MIN,
+            min(constants.TOOL_TIMEOUT_MAX, float(resolved_timeout)),
+        )
+
         self._logger = get_logger("agent.tools.executor")
         self._trace = get_trace_logger()
 
     def has_tool(self, name: str) -> bool:
         return self._registry.has_tool(name)
 
-    def can_proceed(self, parameters: dict[str, Any] | None = None) -> bool:
+    def can_proceed(
+        self,
+        parameters: dict[str, Any] | None = None,
+    ) -> bool:
         if self._cost_tracker is None:
             return True
+
         return self._cost_tracker.can_proceed()
 
     async def execute(self, tool_call: ToolCall) -> ToolCall:
@@ -47,10 +63,14 @@ class ToolExecutor:
         tool_name = tool_call.tool_name
 
         definition = self._registry.get(tool_name)
+
         if definition is None:
             tool_call.success = False
-            tool_call.error = f"Tool '{tool_name}' not found in registry"
+            tool_call.error = (
+                f"Tool '{tool_name}' not found in registry"
+            )
             tool_call.latency_ms = (time.perf_counter() - start) * 1000
+
             self._trace.emit(
                 "tool_execution_failed",
                 tool_name=tool_name,
@@ -64,8 +84,13 @@ class ToolExecutor:
                 category=definition.category,
             ):
                 tool_call.success = False
-                tool_call.error = "Insufficient token budget for this tool"
-                tool_call.latency_ms = (time.perf_counter() - start) * 1000
+                tool_call.error = (
+                    "Insufficient token budget for this tool"
+                )
+                tool_call.latency_ms = (
+                    time.perf_counter() - start
+                ) * 1000
+
                 self._trace.emit(
                     "tool_budget_rejected",
                     tool_name=tool_name,
@@ -75,13 +100,19 @@ class ToolExecutor:
                 return tool_call
 
         executor_fn = self._registry.get_executor(tool_name)
+
         if executor_fn is None:
             tool_call.success = False
-            tool_call.error = f"No executor function for tool '{tool_name}'"
+            tool_call.error = (
+                f"No executor function for tool '{tool_name}'"
+            )
             tool_call.latency_ms = (time.perf_counter() - start) * 1000
             return tool_call
 
-        parameters = self._sanitize_parameters(executor_fn, tool_call.parameters)
+        parameters = self._sanitize_parameters(
+            executor_fn,
+            tool_call.parameters,
+        )
         timeout = definition.timeout_seconds or self._default_timeout
 
         try:
@@ -95,12 +126,15 @@ class ToolExecutor:
                 tool_call.result = result.data
                 tool_call.tokens_used = int(result.tokens_used or 0)
                 tool_call.error = result.error
+
                 if result.latency_ms:
                     tool_call.latency_ms = float(result.latency_ms)
             elif isinstance(result, dict):
                 tool_call.success = bool(result.get("success", True))
                 tool_call.result = result.get("data", result)
-                tool_call.tokens_used = int(result.get("tokens_used", 0) or 0)
+                tool_call.tokens_used = int(
+                    result.get("tokens_used", 0) or 0
+                )
                 tool_call.error = result.get("error")
             else:
                 tool_call.success = True
@@ -109,14 +143,41 @@ class ToolExecutor:
 
         except asyncio.TimeoutError:
             tool_call.success = False
-            tool_call.error = f"Tool '{tool_name}' timed out after {timeout}s"
-            self._logger.warning(f"Tool {tool_name} timed out")
+            tool_call.error = (
+                f"Tool '{tool_name}' "
+                f"(category={definition.category}) "
+                f"timed out after {timeout}s"
+            )
+
+            self._logger.warning(
+                f"Tool {tool_name} timed out "
+                f"after {timeout}s "
+                f"(category={definition.category})"
+            )
+
+            self._trace.emit(
+                "tool_timeout",
+                tool_name=tool_name,
+                category=definition.category,
+                timeout_seconds=timeout,
+            )
+        except asyncio.CancelledError:
+            tool_call.success = False
+            tool_call.error = f"Tool '{tool_name}' was cancelled"
+            tool_call.latency_ms = (
+                time.perf_counter() - start
+            ) * 1000
+            raise
         except Exception as exc:
             tool_call.success = False
             tool_call.error = f"Tool '{tool_name}' failed: {str(exc)}"
-            self._logger.warning(f"Tool {tool_name} failed: {exc}")
 
-        tool_call.latency_ms = (time.perf_counter() - start) * 1000
+            self._logger.warning(
+                f"Tool {tool_name} failed: {exc}"
+            )
+
+        if not tool_call.latency_ms:
+            tool_call.latency_ms = (time.perf_counter() - start) * 1000
 
         if self._cost_tracker is not None and tool_call.tokens_used > 0:
             self._cost_tracker.record_usage(
@@ -131,6 +192,7 @@ class ToolExecutor:
         self._trace.emit(
             "tool_execution_completed",
             tool_name=tool_name,
+            category=definition.category,
             success=tool_call.success,
             tokens_used=tool_call.tokens_used,
             latency_ms=round(tool_call.latency_ms, 1),
@@ -178,8 +240,9 @@ class ToolExecutor:
         aliases = {
             "topic": "query",
             "q": "query",
-            "search_query": "query",
             "question": "query",
+            "search_query": "query",
+            "step_description": "query",
             "limit": "max_results",
             "results": "max_results",
             "max_sources": "max_results",
@@ -206,6 +269,7 @@ class ToolExecutor:
 
         for key, value in parameters.items():
             name = aliases.get(key, key)
+
             if name in valid_names and name not in cleaned:
                 cleaned[name] = value
 

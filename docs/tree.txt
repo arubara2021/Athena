@@ -1,89 +1,290 @@
+PS C:\Users\arun0\Videos\research_agent> Measure-Command { python main.py version } | Select-Object TotalMilliseconds
+Traceback (most recent call last):
+  File "C:\Users\arun0\Videos\research_agent\main.py", line 10, in <module>
+    from cli import app
+  File "C:\Users\arun0\Videos\research_agent\cli.py", line 28, in <module>
+    from cli_style import (
+ModuleNotFoundError: No module named 'cli_style'
 
-    Directory: C:\Users\arun0\Videos\research_agent
+TotalMilliseconds
+-----------------
+         468.1151
 
 
-Mode                 LastWriteTime         Length Name                                                                                                                                                   
-----                 -------------         ------ ----                                                                                                                                                   
-d-----        22/08/2026     17:55                cache                                                                                                                                                  
-d-----        24/08/2026     21:19                clients                                                                                                                                                
-d-----        25/08/2026     21:29                configs                                                                                                                                                
-d-----        25/08/2026     21:29                core                                                                                                                                                   
-d-----        26/08/2026     14:22                data                                                                                                                                                   
-d-----        22/08/2026     17:31                docs                                                                                                                                                   
-d-----        25/08/2026     19:44                llm                                                                                                                                                    
-d-----        25/08/2026     21:29                logs                                                                                                                                                   
-d-----        22/08/2026     11:40                output                                                                                                                                                 
-d-----        24/08/2026     21:07                prompts                                                                                                                                                
-d-----        25/08/2026     21:46                rag                                                                                                                                                    
-d-----        24/08/2026     21:19                ranking                                                                                                                                                
-d-----        24/08/2026     21:07                scripts                                                                                                                                                
-d-----        24/08/2026     21:19                search                                                                                                                                                 
-d-----        24/08/2026     21:19                storage                                                                                                                                                
-d-----        24/08/2026     21:07                tests                                                                                                                                                  
-d-----        24/08/2026     21:19                utils                                                                                                                                                  
-d-----        24/08/2026     21:19                __pycache__                                                                                                                                            
--a----        24/08/2026     19:37           1150 .env                                                                                                                                                   
--a----        22/08/2026     13:29            816 .env.example                                                                                                                                           
--a----        22/08/2026     11:40              0 .gitignore                                                                                                                                             
--a----        22/08/2026     13:29              0 .python-version                                                                                                                                        
--a----        24/08/2026     21:19          36981 cli.py                                                                                                                                                 
--a----        22/08/2026     14:41             99 main.py                                                                                                                                                
--a----        22/08/2026     11:40              0 Makefile                                                                                                                                               
--a----        22/08/2026     11:40              0 pyproject.toml                                                                                                                                         
--a----        22/08/2026     17:30           7897 README.md                                                                                                                                              
--a----        22/08/2026     17:30             74 requirements.txt                                                                                                                                       
+PS C:\Users\arun0\Videos\research_agent> Measure-Command { python main.py doctor } | Select-Object TotalMilliseconds
+Traceback (most recent call last):
+  File "C:\Users\arun0\Videos\research_agent\main.py", line 10, in <module>
+    from cli import app
+  File "C:\Users\arun0\Videos\research_agent\cli.py", line 28, in <module>
+    from cli_style import (
+ModuleNotFoundError: No module named 'cli_style'
 
+TotalMilliseconds
+-----------------
+         488.0013
+
+
+PS C:\Users\arun0\Videos\research_agent> python main.py version
+>> python main.py doctor
+>> python main.py config
+>> python main.py tools
+>> python main.py stats
+>> python main.py runs list
+>> python main.py chat --interactive
+Traceback (most recent call last):
+  File "C:\Users\arun0\Videos\research_agent\main.py", line 10, in <module>
+    from cli import app
+  File "C:\Users\arun0\Videos\research_agent\cli.py", line 28, in <module>
+    from cli_style import (
+ModuleNotFoundError: No module named 'cli_style'
+Traceback (most recent call last):
+  File "C:\Users\arun0\Videos\research_agent\main.py", line 10, in <module>
+    from cli import app
+  File "C:\Users\arun0\Videos\research_agent\cli.py", line 28, in <module>
+    from cli_style import (
+ModuleNotFoundError: No module named 'cli_style'
+Traceback (most recent call last):
+  File "C:\Users\arun0\Videos\research_agent\main.py", line 10, in <module>
+    from cli import app
+  File "C:\Users\arun0\Videos\research_agent\cli.py", line 28, in <module>
+    from cli_style import (
+ModuleNotFoundError: No module named 'cli_style'
+Traceback (most recent call last):
+  File "C:\Users\arun0\Videos\research_agent\main.py", line 10, in <module>
+    from cli import app
+  File "C:\Users\arun0\Videos\research_agent\cli.py", line 28, in <module>
+    from cli_style import (
+ModuleNotFoundError: No module named 'cli_style'
+Traceback (most recent call last):
+  File "C:\Users\arun0\Videos\research_agent\main.py", line 10, in <module>
+    from cli import app
+  File "C:\Users\arun0\Videos\research_agent\cli.py", line 28, in <module>
+    from cli_style import (
+ModuleNotFoundError: No module named 'cli_style'
+Traceback (most recent call last):
+  File "C:\Users\arun0\Videos\research_agent\main.py", line 10, in <module>
+    from cli import app
+  File "C:\Users\arun0\Videos\research_agent\cli.py", line 28, in <module>
+    from cli_style import (
+ModuleNotFoundError: No module named 'cli_style'
+Traceback (most recent call last):
+  File "C:\Users\arun0\Videos\research_agent\main.py", line 10, in <module>
+    from cli import app
+  File "C:\Users\arun0\Videos\research_agent\cli.py", line 28, in <module>
+    from cli_style import (
+ModuleNotFoundError: No module named 'cli_style'
+PS C:\Users\arun0\Videos\research_agent> 
+ *  History restored 
 
 PS C:\Users\arun0\Videos\research_agent> tree /f
 Folder PATH listing for volume Windows
-Volume serial number is 00000073 1C89:F812
+Volume serial number is 1C89-F812
 C:.
 │   .env
 │   .env.example
 │   .gitignore
 │   .python-version
+│   architecture.md
 │   cli.py
+│   cli.py.backup
+│   constants.py
+│   imports.txt
 │   main.py
 │   Makefile
+│   new.py
 │   pyproject.toml
 │   README.md
+│   repro_tool.py
 │   requirements.txt
+│   roadmap.md
+│   _debug_bundle.txt
+│   _scorer_dump.txt
 │   
+├───.pytest_cache
+│   │   .gitignore
+│   │   CACHEDIR.TAG
+│   │   README.md
+│   │   
+│   └───v
+│       └───cache
+│               lastfailed
+│               nodeids
+│               
+├───agent
+│   │   controller.py
+│   │   __init__.py
+│   │   
+│   ├───loop
+│   │   │   act.py
+│   │   │   engine.py
+│   │   │   observe.py
+│   │   │   reflect.py
+│   │   │   state.py
+│   │   │   think.py
+│   │   │   __init__.py
+│   │   │   
+│   │   └───__pycache__
+│   │           act.cpython-310.pyc
+│   │           engine.cpython-310.pyc
+│   │           observe.cpython-310.pyc
+│   │           reflect.cpython-310.pyc
+│   │           state.cpython-310.pyc
+│   │           think.cpython-310.pyc
+│   │           __init__.cpython-310.pyc
+│   │           
+│   ├───memory
+│   │   │   episodic.py
+│   │   │   long_term.py
+│   │   │   retrieval.py
+│   │   │   short_term.py
+│   │   │   __init__.py
+│   │   │   
+│   │   └───__pycache__
+│   │           episodic.cpython-310.pyc
+│   │           long_term.cpython-310.pyc
+│   │           retrieval.cpython-310.pyc
+│   │           short_term.cpython-310.pyc
+│   │           __init__.cpython-310.pyc
+│   │           
+│   ├───planner
+│   │   │   budget_alloc.py
+│   │   │   decomposer.py
+│   │   │   planner.py
+│   │   │   templates.py
+│   │   │   __init__.py
+│   │   │   
+│   │   └───__pycache__
+│   │           budget_alloc.cpython-310.pyc
+│   │           decomposer.cpython-310.pyc
+│   │           planner.cpython-310.pyc
+│   │           templates.cpython-310.pyc
+│   │           __init__.cpython-310.pyc
+│   │           
+│   ├───reflection
+│   │   │   decider.py
+│   │   │   engine.py
+│   │   │   evaluator.py
+│   │   │   __init__.py
+│   │   │   
+│   │   └───__pycache__
+│   │           decider.cpython-310.pyc
+│   │           engine.cpython-310.pyc
+│   │           evaluator.cpython-310.pyc
+│   │           __init__.cpython-310.pyc
+│   │           
+│   ├───token
+│   │   │   budget.py
+│   │   │   cost_tracker.py
+│   │   │   ledger.py
+│   │   │   __init__.py
+│   │   │   
+│   │   └───__pycache__
+│   │           budget.cpython-310.pyc
+│   │           cost_tracker.cpython-310.pyc
+│   │           ledger.cpython-310.pyc
+│   │           __init__.cpython-310.pyc
+│   │           
+│   ├───tools
+│   │   │   analysis_tools.py
+│   │   │   executor.py
+│   │   │   gen_tools.py
+│   │   │   memory_tools.py
+│   │   │   read_tools.py
+│   │   │   registry.py
+│   │   │   search_tools.py
+│   │   │   __init__.py
+│   │   │   
+│   │   └───__pycache__
+│   │           analysis_tools.cpython-310.pyc
+│   │           executor.cpython-310.pyc
+│   │           gen_tools.cpython-310.pyc
+│   │           memory_tools.cpython-310.pyc
+│   │           read_tools.cpython-310.pyc
+│   │           registry.cpython-310.pyc
+│   │           search_tools.cpython-310.pyc
+│   │           __init__.cpython-310.pyc
+│   │           
+│   └───__pycache__
+│           controller.cpython-310.pyc
+│           __init__.cpython-310.pyc
+│           
 ├───cache
 ├───clients
 │   │   arxiv_client.py
 │   │   base_client.py
+│   │   core_client.py
+│   │   crossref_client.py
+│   │   doaj_client.py
+│   │   europe_pmc_client.py
+│   │   exa_client.py
 │   │   github_client.py
 │   │   huggingface_client.py
+│   │   internet_archive_client.py
+│   │   jina_client.py
+│   │   libretexts_client.py
+│   │   mit_ocw_client.py
 │   │   openalex_client.py
+│   │   openstax_client.py
+│   │   open_library_client.py
+│   │   pubmed_client.py
 │   │   semantic_scholar_client.py
+│   │   serpapi_client.py
+│   │   serper_client.py
+│   │   tavily_client.py
 │   │   web_search_client.py
+│   │   wikibooks_client.py
 │   │   wikipedia_client.py
+│   │   wikiversity_client.py
+│   │   zenodo_client.py
 │   │   __init__.py
 │   │   
 │   └───__pycache__
 │           arxiv_client.cpython-310.pyc
 │           base_client.cpython-310.pyc
+│           core_client.cpython-310.pyc
+│           crossref_client.cpython-310.pyc
+│           doaj_client.cpython-310.pyc
+│           europe_pmc_client.cpython-310.pyc
+│           exa_client.cpython-310.pyc
 │           github_client.cpython-310.pyc
 │           huggingface_client.cpython-310.pyc
+│           internet_archive_client.cpython-310.pyc
+│           jina_client.cpython-310.pyc
+│           libretexts_client.cpython-310.pyc
+│           mit_ocw_client.cpython-310.pyc
 │           openalex_client.cpython-310.pyc
+│           openstax_client.cpython-310.pyc
+│           open_library_client.cpython-310.pyc
+│           pubmed_client.cpython-310.pyc
 │           semantic_scholar_client.cpython-310.pyc
+│           serpapi_client.cpython-310.pyc
+│           serper_client.cpython-310.pyc
+│           tavily_client.cpython-310.pyc
 │           web_search_client.cpython-310.pyc
+│           wikibooks_client.cpython-310.pyc
 │           wikipedia_client.cpython-310.pyc
+│           wikiversity_client.cpython-310.pyc
+│           zenodo_client.cpython-310.pyc
 │           __init__.cpython-310.pyc
 │           
 ├───configs
+│       agent_config.yaml
+│       domains.yaml
 │       ensemble.yaml
 │       models.yaml
 │       provider_config.yaml
 │       ranking.yaml
 │       routing_rules.yaml
 │       settings.yaml
+│       settings.yaml.bak
 │       sources.yaml
+│       token_budgets.yaml
+│       ui.yaml
 │       
 ├───core
 │   │   config.py
 │   │   constants.py
+│   │   domain_registry.py
 │   │   events.py
 │   │   exceptions.py
 │   │   models.py
@@ -97,6 +298,7 @@ C:.
 │   └───__pycache__
 │           config.cpython-310.pyc
 │           constants.cpython-310.pyc
+│           domain_registry.cpython-310.pyc
 │           events.cpython-310.pyc
 │           exceptions.cpython-310.pyc
 │           models.cpython-310.pyc
@@ -108,9 +310,52 @@ C:.
 │           __init__.cpython-310.pyc
 │           
 ├───data
+│   │   acronym_cache.json
+│   │   agent_memory.db
+│   │   history.json
+│   │   platform_health.json
+│   │   provider_health.json
 │   │   research_agent.db
-│   │   vector_store.json
+│   │   vector_store.db
+│   │   vector_store.db.bak
+│   │   vector_store.db.bak2
+│   │   vector_store.json.migrated
 │   │   
+│   ├───conversations
+│   │       20260926_112014_1c87d338.json
+│   │       20260926_121055_b7b291d8.json
+│   │       20260926_121113_7a61c846.json
+│   │       20260926_121148_e950287f.json
+│   │       20260926_121209_5c094e0a.json
+│   │       20260926_134839_e5c18995.json
+│   │       20260926_134846_ece82ab6.json
+│   │       20260926_134901_0466defd.json
+│   │       20260926_135900_0a36bc6e.json
+│   │       20260926_152348_f5815685.json
+│   │       20260926_152420_f172ed91.json
+│   │       20260926_152448_d4cee7b5.json
+│   │       20260926_152512_6d0bf333.json
+│   │       20260926_152723_18cae24f.json
+│   │       20260926_152729_ab09fd4e.json
+│   │       20260926_152736_8d62c2ff.json
+│   │       20260926_153025_f0c015f0.json
+│   │       20260926_153435_a549c190.json
+│   │       20260926_153517_5b9fd122.json
+│   │       20260926_154236_f40b3375.json
+│   │       20260926_154249_5e2f6021.json
+│   │       20260926_163350_6cd95338.json
+│   │       20260926_163402_fa316a65.json
+│   │       20260927_061308_c586d2b9.json
+│   │       20260927_062124_030f495e.json
+│   │       20260927_062156_7be98088.json
+│   │       20260927_160841_a0d22221.json
+│   │       20260928_114845_b820e130.json
+│   │       20260928_114919_ea8a5b8f.json
+│   │       20260928_114950_f749ddbd.json
+│   │       20260928_115650_b08e5f90.json
+│   │       20260928_115737_fcfeeea8.json
+│   │       20260928_151605.json
+│   │       
 │   ├───processed
 │   │       .gitkeep
 │   │       
@@ -121,6 +366,8 @@ C:.
 │       architecture.md
 │       future.md
 │       roadmap.md
+│       tree.txt
+│       upgrade.txt
 │       
 ├───llm
 │   │   aggregator.py
@@ -152,23 +399,121 @@ C:.
 ├───output
 │   │   .gitkeep
 │   │   
+│   ├───benchmark
+│   ├───inspect
 │   ├───json
-│   │       GLEU_from_ML_20260826_081357.json
-│   │       I_want_to_learn_about_MOE_models_from_basics_20260826_084129.json
-│   │       I_want_to_learn_about_MOE_models_from_basics_20260826_085230.json
-│   │       Relu_from_maths_20260825_161603.json
+│   │       agi_artificial_intelligence_20260926_090411.json
+│   │       architecture_of_the_semiconductor_20260927_110407.json
+│   │       artificial_general_intelligence_20260926_085558.json
+│   │       astro_physics_from_basics_20260927_072111.json
+│   │       backpropagation_basics_advanced_20260927_151918.json
+│   │       basic_chemistry_20260926_073210.json
+│   │       basic_chemistry_20260926_074318.json
+│   │       basic_organic_chemistry_20260926_075129.json
+│   │       basic_organic_chemistry_20260926_082811.json
+│   │       basic_organic_chemistry_20260926_084107.json
+│   │       clinical_pharmacy_drug_interactions_pharmacokinetics_20260927_152331.json
+│   │       corpus_topics_20260927_153935.json
+│   │       dense_retrieval_20260927_121840.json
+│   │       dense_retrieval_20260927_123015.json
+│   │       dense_retrieval_20260927_143242.json
+│   │       dense_retrieval_methods_20260926_154007.json
+│   │       dense_retrieval_methods_20260926_154209.json
+│   │       dense_retrieval_models_machine_20260926_152949.json
+│   │       dense_retrieval_models_machine_20260926_163308.json
+│   │       hello_i_want_to_learn_about_the_thermodyanics_basics_20260928_161557.json
+│   │       introduction_thermodynamics_20260928_162547.json
+│   │       i_want_to_learn_about_thermodayniacs_20260928_160810.json
+│   │       learn_dense_retrieval_20260926_163829.json
+│   │       learn_dense_retrieval_from_basics_20260927_061558.json
+│   │       learn_dense_retrieval_from_basics_20260927_070316.json
+│   │       life_of_pie_what_is_life_for_human_body_20260927_091827.json
+│   │       life_of_pie_what_is_life_for_human_body_20260927_092414.json
+│   │       life_of_psychology_basics_20260927_085814.json
+│   │       life_of_psychology_basics_20260927_091100.json
+│   │       machine_climate_modeling_time_series_20260927_154221.json
+│   │       organic_chemistry_basics_20260926_084653.json
+│   │       personal_inventory_current_assets_20260927_164923.json
+│   │       pharmacokinetics_adme_principles_20260927_153228.json
+│   │       photolithography_and_semiconductor_manufacturing_20260927_093338.json
+│   │       photosynthesis_20260927_153912.json
+│   │       photosynthesis_20260927_160805.json
 │   │       
 │   ├───markdown
-│   │       GLEU_from_ML_20260826_081357.md
-│   │       I_want_to_learn_about_MOE_models_from_basics_20260826_084129.md
-│   │       I_want_to_learn_about_MOE_models_from_basics_20260826_085230.md
-│   │       Relu_from_maths_20260825_161603.md
+│   │       agi_artificial_intelligence_20260926_090411.md
+│   │       architecture_of_the_semiconductor_20260927_110407.md
+│   │       artificial_general_intelligence_20260926_085558.md
+│   │       astro_physics_from_basics_20260927_072111.md
+│   │       backpropagation_basics_advanced_20260927_151918.md
+│   │       basic_chemistry_20260926_073210.md
+│   │       basic_chemistry_20260926_074318.md
+│   │       basic_organic_chemistry_20260926_075129.md
+│   │       basic_organic_chemistry_20260926_082811.md
+│   │       basic_organic_chemistry_20260926_084107.md
+│   │       clinical_pharmacy_drug_interactions_pharmacokinetics_20260927_152331.md
+│   │       corpus_topics_20260927_153935.md
+│   │       dense_retrieval_20260927_121840.md
+│   │       dense_retrieval_20260927_123015.md
+│   │       dense_retrieval_20260927_143242.md
+│   │       dense_retrieval_methods_20260926_154007.md
+│   │       dense_retrieval_methods_20260926_154209.md
+│   │       dense_retrieval_models_machine_20260926_152949.md
+│   │       dense_retrieval_models_machine_20260926_163308.md
+│   │       hello_i_want_to_learn_about_the_thermodyanics_basics_20260928_161557.md
+│   │       introduction_thermodynamics_20260928_162547.md
+│   │       i_want_to_learn_about_thermodayniacs_20260928_160810.md
+│   │       learn_dense_retrieval_20260926_163829.md
+│   │       learn_dense_retrieval_from_basics_20260927_061558.md
+│   │       learn_dense_retrieval_from_basics_20260927_070316.md
+│   │       life_of_pie_what_is_life_for_human_body_20260927_091827.md
+│   │       life_of_pie_what_is_life_for_human_body_20260927_092414.md
+│   │       life_of_psychology_basics_20260927_085814.md
+│   │       life_of_psychology_basics_20260927_091100.md
+│   │       machine_climate_modeling_time_series_20260927_154221.md
+│   │       organic_chemistry_basics_20260926_084653.md
+│   │       personal_inventory_current_assets_20260927_164923.md
+│   │       pharmacokinetics_adme_principles_20260927_153228.md
+│   │       photolithography_and_semiconductor_manufacturing_20260927_093338.md
+│   │       photosynthesis_20260927_153912.md
+│   │       photosynthesis_20260927_160805.md
 │   │       
 │   └───reports
-│           GLEU_from_ML_20260826_081357.html
-│           I_want_to_learn_about_MOE_models_from_basics_20260826_084129.html
-│           I_want_to_learn_about_MOE_models_from_basics_20260826_085230.html
-│           Relu_from_maths_20260825_161603.html
+│           agi_artificial_intelligence_20260926_090411.html
+│           architecture_of_the_semiconductor_20260927_110407.html
+│           artificial_general_intelligence_20260926_085558.html
+│           astro_physics_from_basics_20260927_072111.html
+│           backpropagation_basics_advanced_20260927_151918.html
+│           basic_chemistry_20260926_073210.html
+│           basic_chemistry_20260926_074318.html
+│           basic_organic_chemistry_20260926_075129.html
+│           basic_organic_chemistry_20260926_082811.html
+│           basic_organic_chemistry_20260926_084107.html
+│           clinical_pharmacy_drug_interactions_pharmacokinetics_20260927_152331.html
+│           corpus_topics_20260927_153935.html
+│           dense_retrieval_20260927_121840.html
+│           dense_retrieval_20260927_123015.html
+│           dense_retrieval_20260927_143242.html
+│           dense_retrieval_methods_20260926_154007.html
+│           dense_retrieval_methods_20260926_154209.html
+│           dense_retrieval_models_machine_20260926_152949.html
+│           dense_retrieval_models_machine_20260926_163308.html
+│           hello_i_want_to_learn_about_the_thermodyanics_basics_20260928_161557.html
+│           introduction_thermodynamics_20260928_162547.html
+│           i_want_to_learn_about_thermodayniacs_20260928_160810.html
+│           learn_dense_retrieval_20260926_163829.html
+│           learn_dense_retrieval_from_basics_20260927_061558.html
+│           learn_dense_retrieval_from_basics_20260927_070316.html
+│           life_of_pie_what_is_life_for_human_body_20260927_091827.html
+│           life_of_pie_what_is_life_for_human_body_20260927_092414.html
+│           life_of_psychology_basics_20260927_085814.html
+│           life_of_psychology_basics_20260927_091100.html
+│           machine_climate_modeling_time_series_20260927_154221.html
+│           organic_chemistry_basics_20260926_084653.html
+│           personal_inventory_current_assets_20260927_164923.html
+│           pharmacokinetics_adme_principles_20260927_153228.html
+│           photolithography_and_semiconductor_manufacturing_20260927_093338.html
+│           photosynthesis_20260927_153912.html
+│           photosynthesis_20260927_160805.html
 │           
 ├───prompts
 │       aggregator_prompt.txt
@@ -177,19 +522,39 @@ C:.
 │       learning_path.txt
 │       learning_path_prompt.txt
 │       ranking_prompt.txt
+│       relevance_filter_prompt.txt
 │       router_prompt.txt
 │       search_ranking.txt
 │       source_summary.txt
 │       source_summary_prompt.txt
 │       
 ├───rag
+│   │   catalog_handler.py
+│   │   catalog_service.py
 │   │   chat_engine.py
+│   │   conversation.py
 │   │   embedder.py
+│   │   generator.py
+│   │   intent_router.py
+│   │   query_expander.py
+│   │   reranker.py
+│   │   schemas.py
+│   │   topic_analyzer.py
 │   │   vector_store.py
 │   │   __init__.py
 │   │   
 │   └───__pycache__
+│           catalog_handler.cpython-310.pyc
+│           catalog_service.cpython-310.pyc
+│           chat_engine.cpython-310.pyc
+│           conversation.cpython-310.pyc
 │           embedder.cpython-310.pyc
+│           generator.cpython-310.pyc
+│           intent_router.cpython-310.pyc
+│           query_expander.cpython-310.pyc
+│           reranker.cpython-310.pyc
+│           schemas.cpython-310.pyc
+│           topic_analyzer.cpython-310.pyc
 │           vector_store.cpython-310.pyc
 │           __init__.cpython-310.pyc
 │           
@@ -207,33 +572,61 @@ C:.
 │           consensus_ranker.cpython-310.pyc
 │           difficulty_classifier.cpython-310.pyc
 │           learning_path_builder.cpython-310.pyc
+│           llm_ranker.cpython-310.pyc
 │           path_enhancer.cpython-310.pyc
 │           scorer.cpython-310.pyc
 │           source_summarizer.cpython-310.pyc
 │           __init__.cpython-310.pyc
 │           
+├───Research_agent
+│   │   PipeLine.md
+│   │   Welcome.md
+│   │   
+│   └───.obsidian
+│           app.json
+│           appearance.json
+│           core-plugins.json
+│           graph.json
+│           workspace.json
+│           
 ├───scripts
-│       check_apis.py
-│       check_models.py
-│       install.ps1
-│       run_search.ps1
-│       
+│   │   benchmark_domain_routing.py
+│   │   check_apis.py
+│   │   check_models.py
+│   │   install.ps1
+│   │   run_search.ps1
+│   │   smoke_llm_outputs.py
+│   │   verify_all_fixes.py
+│   │   
+│   └───__pycache__
+│           check_apis.cpython-310.pyc
+│           check_models.cpython-310.pyc
+│           smoke_llm_outputs.cpython-310.pyc
+│           
 ├───search
 │   │   dedupe.py
+│   │   llm_relevance.py
 │   │   normalizer.py
 │   │   orchestrator.py
 │   │   query_expander.py
 │   │   query_intelligence.py
+│   │   query_profile.py
+│   │   query_tokens.py
+│   │   relevance.py
 │   │   source_fetcher.py
 │   │   validator.py
 │   │   __init__.py
 │   │   
 │   └───__pycache__
 │           dedupe.cpython-310.pyc
+│           llm_relevance.cpython-310.pyc
 │           normalizer.cpython-310.pyc
 │           orchestrator.cpython-310.pyc
 │           query_expander.cpython-310.pyc
 │           query_intelligence.cpython-310.pyc
+│           query_profile.cpython-310.pyc
+│           query_tokens.cpython-310.pyc
+│           relevance.cpython-310.pyc
 │           source_fetcher.cpython-310.pyc
 │           validator.cpython-310.pyc
 │           __init__.cpython-310.pyc
@@ -263,20 +656,170 @@ C:.
 │   │       sample_semantic_scholar.json
 │   │       
 │   ├───integration
-│   │       test_search_pipeline.py
+│   │   │   test_athena_learning_path.py
+│   │   │   test_search_pipeline.py
+│   │   │   __init__.py
+│   │   │   
+│   │   └───__pycache__
+│   │           test_search_pipeline.cpython-310.pyc
+│   │           __init__.cpython-310.pyc
+│   │           
+│   ├───unit
+│   │   │   test_arxiv.py
+│   │   │   test_athena_cli_distribution.py
+│   │   │   test_athena_fixes_unit.py
+│   │   │   test_athena_live.py
+│   │   │   test_catalog_mode.py
+│   │   │   test_dedupe.py
+│   │   │   test_ranking.py
+│   │   │   __init__.py
+│   │   │   
+│   │   └───__pycache__
+│   │           test_arxiv.cpython-310-pytest-8.4.2.pyc
+│   │           test_arxiv.cpython-310.pyc
+│   │           test_athena_cli_distribution.cpython-310-pytest-8.4.2.pyc
+│   │           test_athena_fixes_unit.cpython-310-pytest-8.4.2.pyc
+│   │           test_athena_live.cpython-310-pytest-8.4.2.pyc
+│   │           test_catalog_mode.cpython-310-pytest-8.4.2.pyc
+│   │           test_dedupe.cpython-310-pytest-8.4.2.pyc
+│   │           test_dedupe.cpython-310.pyc
+│   │           test_ranking.cpython-310-pytest-8.4.2.pyc
+│   │           test_ranking.cpython-310.pyc
+│   │           __init__.cpython-310.pyc
+│   │           
+│   └───__pycache__
+│           conftest.cpython-310-pytest-8.4.2.pyc
+│           conftest.cpython-310.pyc
+│           __init__.cpython-310.pyc
+│           
+├───ui
+│   │   app.py
+│   │   components.py
+│   │   context.py
+│   │   live.py
+│   │   report.py
+│   │   theme.py
+│   │   __init__.py
+│   │   
+│   ├───bus
+│   │   │   bridge.py
+│   │   │   messages.py
+│   │   │   __init__.py
+│   │   │   
+│   │   └───__pycache__
+│   │           bridge.cpython-310.pyc
+│   │           messages.cpython-310.pyc
+│   │           __init__.cpython-310.pyc
+│   │           
+│   ├───commands
+│   │       app.py
+│   │       corpus.py
+│   │       index.py
+│   │       registry.py
+│   │       session.py
+│   │       view.py
 │   │       __init__.py
 │   │       
-│   └───unit
-│           test_arxiv.py
-│           test_dedupe.py
-│           test_ranking.py
-│           __init__.py
+│   ├───config
+│   │   │   loader.py
+│   │   │   schema.py
+│   │   │   __init__.py
+│   │   │   
+│   │   └───__pycache__
+│   │           loader.cpython-310.pyc
+│   │           schema.cpython-310.pyc
+│   │           __init__.cpython-310.pyc
+│   │           
+│   ├───panels
+│   │   │   base.py
+│   │   │   chat_stream.py
+│   │   │   footer_bar.py
+│   │   │   input_bar.py
+│   │   │   left_overlay.py
+│   │   │   path_panel.py
+│   │   │   pulse_panel.py
+│   │   │   right_overlay.py
+│   │   │   source_panel.py
+│   │   │   stage_panel.py
+│   │   │   __init__.py
+│   │   │   
+│   │   └───__pycache__
+│   │           base.cpython-310.pyc
+│   │           chat_stream.cpython-310.pyc
+│   │           footer_bar.cpython-310.pyc
+│   │           input_bar.cpython-310.pyc
+│   │           left_overlay.cpython-310.pyc
+│   │           path_panel.cpython-310.pyc
+│   │           pulse_panel.cpython-310.pyc
+│   │           right_overlay.cpython-310.pyc
+│   │           source_panel.cpython-310.pyc
+│   │           stage_panel.cpython-310.pyc
+│   │           __init__.cpython-310.pyc
+│   │           
+│   ├───screens
+│   │   │   main.py
+│   │   │   welcome.py
+│   │   │   __init__.py
+│   │   │   
+│   │   └───__pycache__
+│   │           main.cpython-310.pyc
+│   │           welcome.cpython-310.pyc
+│   │           __init__.cpython-310.pyc
+│   │           
+│   ├───styles
+│   │       app.tcss
+│   │       
+│   ├───util
+│   │   │   format.py
+│   │   │   paths.py
+│   │   │   session_store.py
+│   │   │   __init__.py
+│   │   │   
+│   │   └───__pycache__
+│   │           format.cpython-310.pyc
+│   │           paths.cpython-310.pyc
+│   │           session_store.cpython-310.pyc
+│   │           __init__.cpython-310.pyc
+│   │           
+│   ├───widgets
+│   │   │   bubble.py
+│   │   │   source_card.py
+│   │   │   toast.py
+│   │   │   __init__.py
+│   │   │   
+│   │   └───__pycache__
+│   │           bubble.cpython-310.pyc
+│   │           source_card.cpython-310.pyc
+│   │           toast.cpython-310.pyc
+│   │           __init__.cpython-310.pyc
+│   │           
+│   ├───workers
+│   │   │   agent_worker.py
+│   │   │   rag_worker.py
+│   │   │   worker_pool.py
+│   │   │   __init__.py
+│   │   │   
+│   │   └───__pycache__
+│   │           agent_worker.cpython-310.pyc
+│   │           rag_worker.cpython-310.pyc
+│   │           worker_pool.cpython-310.pyc
+│   │           __init__.cpython-310.pyc
+│   │           
+│   └───__pycache__
+│           app.cpython-310.pyc
+│           components.cpython-310.pyc
+│           context.cpython-310.pyc
+│           live.cpython-310.pyc
+│           report.cpython-310.pyc
+│           theme.cpython-310.pyc
+│           __init__.cpython-310.pyc
 │           
 ├───utils
 │   │   async_helpers.py
 │   │   cache.py
 │   │   hashing.py
 │   │   logger.py
+│   │   platform_health.py
 │   │   rate_limiter.py
 │   │   retry.py
 │   │   text.py
@@ -289,12 +832,110 @@ C:.
 │           cache.cpython-310.pyc
 │           hashing.cpython-310.pyc
 │           logger.cpython-310.pyc
+│           platform_health.cpython-310.pyc
 │           rate_limiter.cpython-310.pyc
+│           retry.cpython-310.pyc
 │           text.cpython-310.pyc
 │           url.cpython-310.pyc
+│           validators.cpython-310.pyc
+│           __init__.cpython-310.pyc
+│           
+├───_backup_ui_20260928_210224
+│   │   app.py
+│   │   bindings.py
+│   │   commands.py
+│   │   components.py
+│   │   event_bridge.py
+│   │   live.py
+│   │   messages.py
+│   │   report.py
+│   │   run_context.py
+│   │   session_store.py
+│   │   streaming.py
+│   │   styles.tcss
+│   │   theme.py
+│   │   workers.py
+│   │   __init__.py
+│   │   
+│   ├───screens
+│   │   │   chat.py
+│   │   │   welcome.py
+│   │   │   __init__.py
+│   │   │   
+│   │   └───__pycache__
+│   │           chat.cpython-310.pyc
+│   │           main.cpython-310.pyc
+│   │           welcome.cpython-310.pyc
+│   │           __init__.cpython-310.pyc
+│   │           
+│   ├───styles
+│   │       app.tcss
+│   │       
+│   ├───widgets
+│   │   │   bubble.py
+│   │   │   chat_stream.py
+│   │   │   confidence.py
+│   │   │   files_panel.py
+│   │   │   footer.py
+│   │   │   history_panel.py
+│   │   │   input_bar.py
+│   │   │   left_pane.py
+│   │   │   live_pulse.py
+│   │   │   path_panel.py
+│   │   │   query_bar.py
+│   │   │   right_pane.py
+│   │   │   source_card.py
+│   │   │   source_panel.py
+│   │   │   stage_panel.py
+│   │   │   summary_panel.py
+│   │   │   toast.py
+│   │   │   __init__.py
+│   │   │   
+│   │   └───__pycache__
+│   │           bubble.cpython-310.pyc
+│   │           chat_stream.cpython-310.pyc
+│   │           confidence.cpython-310.pyc
+│   │           diagnostics_panel.cpython-310.pyc
+│   │           files_panel.cpython-310.pyc
+│   │           footer.cpython-310.pyc
+│   │           history_panel.cpython-310.pyc
+│   │           input_bar.cpython-310.pyc
+│   │           left_pane.cpython-310.pyc
+│   │           live_pulse.cpython-310.pyc
+│   │           path_panel.cpython-310.pyc
+│   │           query_bar.cpython-310.pyc
+│   │           right_pane.cpython-310.pyc
+│   │           source_card.cpython-310.pyc
+│   │           source_panel.cpython-310.pyc
+│   │           stage_panel.cpython-310.pyc
+│   │           summary_panel.cpython-310.pyc
+│   │           toast.cpython-310.pyc
+│   │           __init__.cpython-310.pyc
+│   │           
+│   └───__pycache__
+│           app.cpython-310.pyc
+│           bindings.cpython-310.pyc
+│           commands.cpython-310.pyc
+│           components.cpython-310.pyc
+│           event_bridge.cpython-310.pyc
+│           live.cpython-310.pyc
+│           messages.cpython-310.pyc
+│           report.cpython-310.pyc
+│           run_context.cpython-310.pyc
+│           session_store.cpython-310.pyc
+│           streaming.cpython-310.pyc
+│           theme.cpython-310.pyc
+│           workers.cpython-310.pyc
 │           __init__.cpython-310.pyc
 │           
 └───__pycache__
+        check_memory.cpython-310.pyc
+        check_search_apis.cpython-310.pyc
         cli.cpython-310.pyc
+        constants.cpython-310.pyc
+        dump_code.cpython-310.pyc
+        export_project_parts.cpython-310.pyc
+        main.cpython-310.pyc
+        repro_tool.cpython-310.pyc
         
 PS C:\Users\arun0\Videos\research_agent> 

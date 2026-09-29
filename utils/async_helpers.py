@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import functools
+import inspect
+import logging
 import random
 import time
 from collections.abc import Awaitable, Callable, Iterable
@@ -10,6 +12,111 @@ from typing import Any, TypeVar
 from core.exceptions import ResearchAgentError
 
 T = TypeVar("T")
+
+
+def loop_is_alive(loop: asyncio.AbstractEventLoop | None) -> bool:
+    return loop is not None and not loop.is_closed()
+
+
+def bind_to_current_loop() -> asyncio.AbstractEventLoop | None:
+    try:
+        return asyncio.get_running_loop()
+    except RuntimeError:
+        return None
+
+
+def _default_logger() -> logging.Logger:
+    try:
+        from utils.logger import get_logger
+
+        return get_logger("utils.async_helpers")
+    except Exception:
+        return logging.getLogger("research_agent.async_helpers")
+
+
+def _resolve_closer(resource: Any) -> Callable[[], Any] | None:
+    for name in ("aclose", "close"):
+        method = getattr(resource, name, None)
+        if callable(method):
+            return method
+    return None
+
+
+async def safe_aclose(
+    resource: Any,
+    *,
+    loop: asyncio.AbstractEventLoop | None = None,
+    logger: logging.Logger | None = None,
+) -> bool:
+    if resource is None:
+        return True
+
+    if getattr(resource, "is_closed", False) is True:
+        return True
+
+    target_logger = logger or _default_logger()
+
+    if loop is not None and not loop_is_alive(loop):
+        target_logger.warning(
+            "safe_aclose: owning event loop is already closed; skipping close"
+        )
+        return False
+
+    closer = _resolve_closer(resource)
+
+    if closer is None:
+        return True
+
+    try:
+        result = closer()
+        if inspect.isawaitable(result):
+            await result
+        return True
+    except RuntimeError as exc:
+        if "event loop is closed" in str(exc).lower():
+            target_logger.warning(
+                f"safe_aclose: event loop closed during close: {exc}"
+            )
+            return False
+        target_logger.warning(f"safe_aclose: runtime error during close: {exc}")
+        return False
+    except Exception as exc:
+        target_logger.warning(f"safe_aclose: close raised: {exc}")
+        return False
+
+
+async def close_and_clear(
+    owner: Any,
+    attribute: str,
+    *,
+    loop_attribute: str | None = None,
+    logger: logging.Logger | None = None,
+) -> bool:
+    resource = getattr(owner, attribute, None)
+
+    if resource is None:
+        if loop_attribute:
+            try:
+                setattr(owner, loop_attribute, None)
+            except Exception:
+                pass
+        return True
+
+    owning_loop: asyncio.AbstractEventLoop | None = None
+
+    try:
+        setattr(owner, attribute, None)
+    except Exception:
+        pass
+
+    if loop_attribute:
+        owning_loop = getattr(owner, loop_attribute, None)
+        try:
+            setattr(owner, loop_attribute, None)
+        except Exception:
+            pass
+
+    return await safe_aclose(resource, loop=owning_loop, logger=logger)
 
 
 async def run_with_timeout(awaitable: Awaitable[T], timeout: float | None = None) -> T:
@@ -90,7 +197,10 @@ async def async_map(
     return results
 
 
-async def cancel_tasks(tasks: Iterable[asyncio.Task[Any]], timeout: float = 5.0) -> None:
+async def cancel_tasks(
+    tasks: Iterable[asyncio.Task[Any]],
+    timeout: float = 5.0,
+) -> None:
     materialized_tasks = list(tasks)
 
     if not materialized_tasks:
@@ -139,7 +249,11 @@ async def wait_first_successful(
 
     try:
         while pending:
-            remaining = None if deadline is None else max(deadline - time.monotonic(), 0.0)
+            remaining = (
+                None
+                if deadline is None
+                else max(deadline - time.monotonic(), 0.0)
+            )
 
             done, pending = await asyncio.wait(
                 pending,

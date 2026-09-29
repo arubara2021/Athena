@@ -68,12 +68,16 @@ class MemoryRetrieval:
         include_knowledge: bool = True,
         include_topics: bool = True,
         limit: int | None = None,
+        top_k: int | None = None,
     ) -> RetrievedContext:
         cleaned_query = clean_text(query)
+
         if not cleaned_query:
             return RetrievedContext(query=query, search_method="empty_query")
 
-        effective_limit = limit if limit is not None else self._max_results
+        effective_limit = limit if limit is not None else top_k
+        effective_limit = effective_limit if effective_limit is not None else self._max_results
+
         results: list[MemorySearchResult] = []
 
         if include_topics:
@@ -100,6 +104,64 @@ class MemoryRetrieval:
             search_method="keyword",
         )
 
+    def retrieve(
+        self,
+        query: str = "",
+        top_k: int | None = None,
+        limit: int | None = None,
+        goal: str = "",
+        level: str = "",
+        task_type: str = "",
+    ) -> str:
+        target = clean_text(query or goal)
+
+        if not target:
+            return ""
+
+        try:
+            context = self.retrieve_context(
+                goal=target,
+                level=level,
+                task_type=task_type,
+            )
+
+            if context:
+                return context
+        except Exception as exc:
+            self._logger.warning(f"Memory context retrieval failed: {exc}")
+
+        search_results = self.search(
+            query=target,
+            limit=limit,
+            top_k=top_k,
+        )
+
+        parts: list[str] = []
+
+        for result in search_results.results:
+            if result.relevance_score >= self._similarity_threshold:
+                parts.append(f"[{result.source}] {result.content[:self._context_window]}")
+
+        return "".join(parts)
+
+    def retrieve_text(
+        self,
+        query: str = "",
+        top_k: int | None = None,
+        limit: int | None = None,
+        goal: str = "",
+        level: str = "",
+        task_type: str = "",
+    ) -> str:
+        return self.retrieve(
+            query=query,
+            top_k=top_k,
+            limit=limit,
+            goal=goal,
+            level=level,
+            task_type=task_type,
+        )
+
     def retrieve_context(
         self,
         goal: str,
@@ -110,6 +172,7 @@ class MemoryRetrieval:
 
         if self._short_term.is_active:
             summary = self._short_term.to_summary()
+
             if summary:
                 context_parts.append(
                     f"Current task context: {summary.get('goal', '')} "
@@ -135,6 +198,7 @@ class MemoryRetrieval:
                 task_type=task_type,
                 limit=2,
             )
+
             if best_strategies:
                 strategy_text = "; ".join(
                     f"{s['strategy']} (quality: {s['avg_quality']:.2f})"
@@ -145,13 +209,14 @@ class MemoryRetrieval:
         if level:
             preferences = self._long_term.get_all_preferences(category="level")
             level_pref = preferences.get(level, "")
+
             if level_pref:
                 context_parts.append(f"User preference for {level}: {level_pref}")
 
         if not context_parts:
             return ""
 
-        combined = "\n".join(context_parts)
+        combined = "".join(context_parts)
         return combined[:self._context_window * 2]
 
     def get_relevant_past_runs(
@@ -166,6 +231,7 @@ class MemoryRetrieval:
             limit=limit,
         )
         results = []
+
         for episode in episodes:
             results.append({
                 "task": episode.task,
@@ -177,6 +243,7 @@ class MemoryRetrieval:
                 "success": episode.success,
                 "finished_at": episode.finished_at,
             })
+
         return results
 
     def build_task_context(
@@ -219,8 +286,10 @@ class MemoryRetrieval:
         try:
             topics = self._long_term.recall_topics(query=query, limit=limit)
             results = []
+
             for topic in topics:
                 relevance = self._compute_relevance(query, topic.get("topic", ""))
+
                 if relevance >= self._similarity_threshold:
                     results.append(
                         MemorySearchResult(
@@ -234,6 +303,7 @@ class MemoryRetrieval:
                             metadata=topic,
                         )
                     )
+
             return results
         except Exception as exc:
             self._logger.warning(f"Topic search failed: {exc}")
@@ -252,11 +322,13 @@ class MemoryRetrieval:
                 limit=limit,
             )
             results = []
+
             for item in knowledge_items:
                 relevance = self._compute_relevance(
                     query,
                     f"{item.get('key', '')} {item.get('content', '')}",
                 )
+
                 if relevance >= self._similarity_threshold:
                     results.append(
                         MemorySearchResult(
@@ -266,6 +338,7 @@ class MemoryRetrieval:
                             metadata=item,
                         )
                     )
+
             return results
         except Exception as exc:
             self._logger.warning(f"Knowledge search failed: {exc}")
@@ -278,8 +351,10 @@ class MemoryRetrieval:
                 limit=limit,
             )
             results = []
+
             for episode in episodes:
                 relevance = self._compute_relevance(query, episode.task)
+
                 if relevance >= self._similarity_threshold:
                     results.append(
                         MemorySearchResult(
@@ -295,6 +370,7 @@ class MemoryRetrieval:
                             metadata=episode.model_dump(mode="json"),
                         )
                     )
+
             return results
         except Exception as exc:
             self._logger.warning(f"Episodic search failed: {exc}")

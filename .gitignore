@@ -1,51 +1,138 @@
-# === Python ===
+# ─── Python ───
 __pycache__/
 *.py[cod]
 *$py.class
-*.egg-info/
-dist/
+*.so
+.Python
 build/
-*.egg
+develop-eggs/
+dist/
+downloads/
+eggs/
 .eggs/
-*.whl
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+*.manifest
+*.spec
+pip-log.txt
+pip-delete-this-directory.txt
 
-# === Virtual environments ===
+# ─── Virtual Environments ───
 .venv/
 venv/
+ENV/
 env/
+.conda/
 .python-version
 
-# === Environment / Secrets ===
+# ─── Testing ───
+.pytest_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+htmlcov/
+pytestdebug.log
+
+# ─── Type Checking ───
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pytype/
+.ruff_cache/
+.pyre/
+
+# ─── Env and Secrets ───
 .env
+.env.local
+.env.*.local
+*.pem
+*.key
+secrets.json
+credentials.json
 
-# === Generated outputs (not source code) ===
-output/
-
-# === Runtime data / databases ===
-data/*.db
-data/*.json
-data/vector_store.json
-
-# === Logs ===
-logs/
-
-# === Cache ===
-cache/
-
-# === IDE / Editor ===
+# ─── IDE ───
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
-Research_agent/.obsidian/
+*.sublime-project
+*.sublime-workspace
+.project
+.classpath
+.settings/
+*.code-workspace
 
-# === OS files ===
-Thumbs.db
-Desktop.ini
+# ─── OS ───
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
 
-# === Project junk ===
-code_dump.txt
-test.log
+# ─── Logs ───
+logs/
 *.log
+*.jsonl
+
+# ─── Athena runtime state ───
+data/
+cache/
+output/
+
+# ─── Athena databases ───
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.db.bak
+*.db.bak2
+*.sqlite
+*.sqlite3
+
+# ─── Athena backup / debug / bundle files ───
+*.bak
+*.backup
+*.bak2
+*.tmp
+.tmp/
+_*.txt
+_debug_*.txt
+_*_bundle.txt
+_scorer_dump.txt
+_cli_debug_bundle.txt
+_artifact_fix_bundle.txt
+_agent_fix_bundle.txt
+_athena_fix_bundle.txt
+
+# ─── User notes ───
+Research_agent/
+.obsidian/
+
+# ─── Makefile / project metadata (keep) ───
+!Makefile
+!pyproject.toml
+!requirements.txt
+!README.md
+
+# ─── Keep empty structure ───
+!.gitkeep

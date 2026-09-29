@@ -74,27 +74,53 @@ def _reconstruct_ranked_sources(sources_data: list[dict[str, Any]]) -> list[Rank
 
 
 async def generate_learning_path(
-    sources_data: list[dict[str, Any]],
-    query: str,
+    sources_data: list[dict[str, Any]] | None = None,
+    query: str = "",
     level: str = "",
     goal: str = "",
     use_llm: bool = True,
+    **kwargs: Any,
 ) -> ToolResult:
     try:
+        if sources_data is None:
+            sources_data = (
+                kwargs.get("sources")
+                or kwargs.get("ranked_sources")
+                or kwargs.get("items")
+                or []
+            )
+
+        if not isinstance(sources_data, list):
+            sources_data = []
+
+        resolved_query = clean_text(
+            query
+            or kwargs.get("topic")
+            or kwargs.get("step_description")
+            or kwargs.get("q")
+            or goal
+        )
+
         ranked_sources = _reconstruct_ranked_sources(sources_data)
+
         if not ranked_sources:
             return ToolResult(
                 tool_name="generate_learning_path",
-                success=False,
-                data=None,
-                error="No valid ranked sources provided",
+                success=True,
+                data={
+                    "skipped": True,
+                    "reason": "No valid ranked sources provided",
+                    "total_steps": 0,
+                    "steps": [],
+                },
+                tokens_used=0,
             )
 
         query_schema = SearchQuerySchema(
-            topic=query,
-            goal=goal,
-            level=level,
-            max_results=len(ranked_sources),
+            topic=resolved_query or "learning path",
+            goal=clean_text(goal),
+            level=clean_text(level),
+            max_results=max(1, min(100, len(ranked_sources))),
         )
 
         builder = LearningPathBuilder(use_llm=use_llm)
@@ -209,11 +235,70 @@ async def enhance_path(
 
 
 async def summarize_source(
-    title: str,
-    abstract: str,
+    title: str = "",
+    abstract: str = "",
     url: str = "",
     use_llm: bool = True,
+    **_: Any,
 ) -> ToolResult:
+    try:
+        cleaned_title = clean_text(title)
+        cleaned_abstract = clean_text(abstract)
+
+        if not cleaned_title and not cleaned_abstract:
+            return ToolResult(
+                tool_name="summarize_source",
+                success=True,
+                data={
+                    "skipped": True,
+                    "reason": "No title or abstract provided",
+                },
+                tokens_used=0,
+            )
+
+        source = Source(
+            source_id="summarize_target",
+            title=cleaned_title or "Untitled source",
+            url=clean_text(url),
+            platform=SourcePlatform.WEB,
+            source_type=SourceType.OTHER,
+            abstract=cleaned_abstract if cleaned_abstract else None,
+        )
+
+        summarizer = SourceSummarizer(use_llm=use_llm)
+        summaries = await summarizer.summarize_sources([source])
+
+        if not summaries:
+            return ToolResult(
+                tool_name="summarize_source",
+                success=False,
+                data=None,
+                error="Failed to generate summary",
+            )
+
+        summary = summaries[0]
+        summary_data = {
+            "title": getattr(summary, "title", cleaned_title),
+            "summary": getattr(summary, "summary", ""),
+            "difficulty": str(getattr(summary, "difficulty", "")),
+            "key_topics": getattr(summary, "key_topics", []),
+            "why_useful": getattr(summary, "why_useful", ""),
+        }
+
+        return ToolResult(
+            tool_name="summarize_source",
+            success=True,
+            data=summary_data,
+            tokens_used=0,
+        )
+    except Exception as exc:
+        _logger.warning(f"summarize_source failed: {exc}")
+        return ToolResult(
+            tool_name="summarize_source",
+            success=False,
+            data=None,
+            error=str(exc),
+        )
     try:
         source = Source(
             source_id="summarize_target",
@@ -261,15 +346,43 @@ async def summarize_source(
 
 
 async def generate_report(
-    query: str,
-    sources_data: list[dict[str, Any]],
+    query: str = "",
+    sources_data: list[dict[str, Any]] | None = None,
     learning_path_data: dict[str, Any] | None = None,
+    **kwargs: Any,
 ) -> ToolResult:
     try:
+        if sources_data is None:
+            sources_data = (
+                kwargs.get("sources")
+                or kwargs.get("ranked_sources")
+                or kwargs.get("items")
+                or []
+            )
+
+        if not isinstance(sources_data, list):
+            sources_data = []
+
+        if learning_path_data is None:
+            learning_path_data = kwargs.get("learning_path") or kwargs.get("path")
+
+        if isinstance(learning_path_data, list):
+            learning_path_data = {"steps": learning_path_data}
+
+        if not isinstance(learning_path_data, dict):
+            learning_path_data = None
+
+        resolved_query = clean_text(
+            query
+            or kwargs.get("topic")
+            or kwargs.get("q")
+            or kwargs.get("goal")
+        ) or "research_report"
+
         report = {
-            "query": query,
+            "query": resolved_query,
             "total_sources": len(sources_data),
-            "sources": sources_data[:10],
+            "sources": sources_data,
             "learning_path": learning_path_data,
             "generated_by": "autonomous_agent",
         }

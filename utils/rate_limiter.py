@@ -29,23 +29,38 @@ class AsyncRateLimiter:
         self.period_seconds = period_seconds
         self._timestamps: deque[float] = deque()
         self._lock = asyncio.Lock()
+        self._penalty_until: float = 0.0
+
+    async def report_rate_limit(self, penalty_seconds: float = 60.0) -> None:
+        async with self._lock:
+            self._penalty_until = max(
+                self._penalty_until,
+                time.monotonic() + max(0.0, penalty_seconds),
+            )
 
     async def acquire(self) -> None:
         while True:
+            wait_time = 0.0
             async with self._lock:
                 now = time.monotonic()
+                if now < self._penalty_until:
+                    wait_time = self._penalty_until - now
+                else:
+                    while (
+                        self._timestamps
+                        and now - self._timestamps[0] >= self.period_seconds
+                    ):
+                        self._timestamps.popleft()
 
-                while self._timestamps and now - self._timestamps[0] >= self.period_seconds:
-                    self._timestamps.popleft()
+                    if len(self._timestamps) < self.rate_limit:
+                        self._timestamps.append(now)
+                        return
 
-                if len(self._timestamps) < self.rate_limit:
-                    self._timestamps.append(now)
-                    return
+                    wait_until = self._timestamps[0] + self.period_seconds
+                    wait_time = max(wait_until - now, 0.01)
 
-                wait_until = self._timestamps[0] + self.period_seconds
-                wait_time = max(wait_until - now, 0.01)
-
-            await asyncio.sleep(wait_time)
+            if wait_time > 0:
+                await asyncio.sleep(wait_time)
 
     async def __aenter__(self) -> AsyncRateLimiter:
         await self.acquire()
@@ -60,6 +75,7 @@ class AsyncRateLimiter:
             "rate_limit": self.rate_limit,
             "period_seconds": self.period_seconds,
             "current_usage": len(self._timestamps),
+            "penalty_active": time.monotonic() < self._penalty_until,
         }
 
 
@@ -76,7 +92,6 @@ class RateLimiterRegistry:
     ) -> AsyncRateLimiter:
         with self._lock:
             limiter = self._limiters.get(name)
-
             if limiter is None:
                 limiter = AsyncRateLimiter(
                     rate_limit=rate_limit,
@@ -84,7 +99,6 @@ class RateLimiterRegistry:
                     name=name,
                 )
                 self._limiters[name] = limiter
-
             return limiter
 
     def all_status(self) -> list[dict[str, Any]]:

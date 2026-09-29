@@ -1,11 +1,8 @@
 from __future__ import annotations
-
 import time
 from typing import Any
 from uuid import uuid4
-
 from pydantic import Field
-
 from core.models import AgentAction, AgentActionType, CoreModel, ToolCall
 from utils.logger import get_logger, get_trace_logger
 
@@ -44,7 +41,6 @@ class ActPhase:
             )
 
         tool_name = str(think_result.tool_name or "").strip()
-
         if not tool_name:
             return ActResult(
                 success=False,
@@ -72,28 +68,46 @@ class ActPhase:
                 tool_name = "read_paper_abstract"
                 parameters = self._prepare_parameters(state, tool_name, think_result)
             else:
-                return ActResult(
-                    success=False,
+                return self._skipped_result(
+                    state=state,
+                    think_result=think_result,
                     tool_name=tool_name,
-                    error="No URL available to read",
-                    skipped=True,
-                    skip_reason="no_url_available",
+                    reason="no_url_available",
                 )
 
         if tool_name == "read_paper_abstract":
             if not str(parameters.get("title", "")).strip() and not str(
                 parameters.get("abstract", "")
             ).strip():
-                return ActResult(
-                    success=False,
+                return self._skipped_result(
+                    state=state,
+                    think_result=think_result,
                     tool_name=tool_name,
-                    error="No readable source available",
-                    skipped=True,
-                    skip_reason="no_readable_source",
+                    reason="no_readable_source",
+                )
+
+        if tool_name == "extract_source_summary":
+            title = str(parameters.get("title", "") or "").strip()
+            abstract = str(parameters.get("abstract", "") or "").strip()
+            if not title and not abstract:
+                return self._skipped_result(
+                    state=state,
+                    think_result=think_result,
+                    tool_name=tool_name,
+                    reason="no_source_for_extract_summary",
+                )
+
+        if tool_name == "compare_sources":
+            sources_data = parameters.get("sources_data")
+            if not isinstance(sources_data, list) or len(sources_data) < 2:
+                return self._skipped_result(
+                    state=state,
+                    think_result=think_result,
+                    tool_name=tool_name,
+                    reason="insufficient_sources_for_compare",
                 )
 
         start = time.perf_counter()
-
         self._trace.emit(
             "agent_acting",
             loop_id=getattr(state, "loop_id", ""),
@@ -109,12 +123,9 @@ class ActPhase:
                 action_type=self._infer_action_type(tool_name),
                 parameters=parameters,
             )
-
             result = await executor.execute(tool_call)
-
             latency_ms = (time.perf_counter() - start) * 1000
             tokens_used = getattr(result, "tokens_used", 0) or 0
-
             state.consume_tokens(tokens_used)
 
             action = AgentAction(
@@ -126,7 +137,6 @@ class ActPhase:
                 reasoning=think_result.reasoning,
                 tokens_used=tokens_used,
             )
-
             state.add_action(action)
 
             if result.success:
@@ -137,7 +147,6 @@ class ActPhase:
                     tokens_used=tokens_used,
                     latency_ms=round(latency_ms, 1),
                 )
-
                 return ActResult(
                     success=True,
                     tool_name=tool_name,
@@ -149,7 +158,6 @@ class ActPhase:
 
             error_msg = result.error or "Tool execution failed"
             state.add_warning(f"Tool {tool_name} failed: {error_msg}")
-
             self._trace.emit(
                 "agent_tool_failed",
                 loop_id=getattr(state, "loop_id", ""),
@@ -157,7 +165,6 @@ class ActPhase:
                 error=error_msg,
                 latency_ms=round(latency_ms, 1),
             )
-
             return ActResult(
                 success=False,
                 tool_name=tool_name,
@@ -170,10 +177,8 @@ class ActPhase:
         except Exception as exc:
             latency_ms = (time.perf_counter() - start) * 1000
             error_msg = str(exc)
-
             state.add_error(f"Tool {tool_name} exception: {error_msg}")
             self._logger.warning(f"Act phase exception for {tool_name}: {exc}")
-
             self._trace.emit(
                 "agent_tool_exception",
                 loop_id=getattr(state, "loop_id", ""),
@@ -181,7 +186,6 @@ class ActPhase:
                 error=error_msg,
                 latency_ms=round(latency_ms, 1),
             )
-
             return ActResult(
                 success=False,
                 tool_name=tool_name,
@@ -197,6 +201,34 @@ class ActPhase:
     ) -> dict[str, Any]:
         raw = think_result.parameters if isinstance(think_result.parameters, dict) else {}
         params = dict(raw)
+
+        alias_map = {
+            "topic": "query",
+            "q": "query",
+            "question": "query",
+            "search_query": "query",
+            "step_description": "query",
+            "limit": "max_results",
+            "results": "max_results",
+            "max_sources": "max_results",
+            "sources": "sources_data",
+            "ranked_sources": "sources_data",
+            "items": "sources_data",
+            "source": "sources_data",
+            "text": "content",
+            "page_content": "content",
+            "memory_key": "key",
+        }
+
+        for old_key, new_key in alias_map.items():
+            if old_key in params:
+                if new_key not in params:
+                    params[new_key] = params.pop(old_key)
+                else:
+                    params.pop(old_key)
+
+        if isinstance(params.get("sources_data"), dict):
+            params["sources_data"] = [params["sources_data"]]
 
         query = self._extract_query(params, state)
 
@@ -224,8 +256,14 @@ class ActPhase:
 
         if tool_name == "compare_sources":
             sources_data = self._coerce_sources_data(params.get("sources_data"))
-            if not sources_data:
-                sources_data = self._sources_from_findings(state)
+            if len(sources_data) < 2:
+                ranked_sources_data = self._sources_from_ranked(state)
+                if len(ranked_sources_data) >= 2:
+                    sources_data = ranked_sources_data
+                else:
+                    findings_sources_data = self._sources_from_findings(state)
+                    if len(findings_sources_data) >= 2:
+                        sources_data = findings_sources_data
             params["sources_data"] = sources_data
             params["query"] = query
 
@@ -262,27 +300,51 @@ class ActPhase:
         if tool_name == "read_paper_abstract":
             source = self._choose_readable_source(state, params)
             if source is not None:
-                params = {
-                    "title": getattr(source, "title", "") or "",
-                    "abstract": getattr(source, "abstract", "") or "",
-                    "url": getattr(source, "url", "") or "",
-                }
+                if not str(params.get("title", "") or "").strip():
+                    params["title"] = getattr(source, "title", "") or ""
+                if not str(params.get("abstract", "") or "").strip():
+                    params["abstract"] = getattr(source, "abstract", "") or ""
+                params.setdefault("url", getattr(source, "url", "") or "")
             else:
-                params = {
-                    "title": str(params.get("title", "") or ""),
-                    "abstract": str(params.get("abstract", "") or ""),
-                    "url": str(params.get("url", "") or ""),
-                }
+                params.setdefault("title", str(params.get("title", "") or ""))
+                params.setdefault("abstract", str(params.get("abstract", "") or ""))
+                params.setdefault("url", str(params.get("url", "") or ""))
+
+        if tool_name == "extract_source_summary":
+            source = self._choose_readable_source(state, params)
+            if source is not None:
+                if not str(params.get("title", "") or "").strip():
+                    params["title"] = getattr(source, "title", "") or ""
+                if not str(params.get("abstract", "") or "").strip():
+                    params["abstract"] = getattr(source, "abstract", "") or ""
+                params.setdefault(
+                    "source_type",
+                    self._enum_value(getattr(source, "source_type", "")) or "other",
+                )
+                params.setdefault(
+                    "platform",
+                    self._enum_value(getattr(source, "platform", "")) or "web",
+                )
+            else:
+                params.setdefault("title", str(params.get("title", "") or ""))
+                params.setdefault("abstract", str(params.get("abstract", "") or ""))
+                params.setdefault("source_type", str(params.get("source_type", "") or ""))
+                params.setdefault("platform", str(params.get("platform", "") or ""))
 
         if tool_name in ("summarize_source", "check_relevance"):
             source = self._choose_readable_source(state, params)
             if source is not None:
-                params["title"] = getattr(source, "title", "") or ""
-                params["abstract"] = getattr(source, "abstract", "") or ""
+                if not str(params.get("title", "") or "").strip():
+                    params["title"] = getattr(source, "title", "") or ""
+                if not str(params.get("abstract", "") or "").strip():
+                    params["abstract"] = getattr(source, "abstract", "") or ""
                 params.setdefault("query", query)
 
         if tool_name == "save_to_memory":
-            params.setdefault("key", getattr(state, "topic", "") or getattr(state, "goal", "") or "agent_memory")
+            params.setdefault(
+                "key",
+                getattr(state, "topic", "") or getattr(state, "goal", "") or "agent_memory",
+            )
             params.setdefault(
                 "content",
                 f"Researched {getattr(state, 'goal', '')}. Findings: {len(getattr(state, 'findings', []) or [])}.",
@@ -290,7 +352,10 @@ class ActPhase:
             params.setdefault("memory_type", "episodic")
 
         if tool_name == "recall_memory":
-            params.setdefault("key", getattr(state, "topic", "") or getattr(state, "goal", "") or "agent_memory")
+            params.setdefault(
+                "key",
+                getattr(state, "topic", "") or getattr(state, "goal", "") or "agent_memory",
+            )
 
         if tool_name == "search_memory":
             params.setdefault("query", query)
@@ -313,19 +378,34 @@ class ActPhase:
 
     def _choose_readable_source(self, state: Any, params: dict[str, Any]) -> Any:
         findings = getattr(state, "findings", []) or []
+        ranked_sources = getattr(state, "ranked_sources", []) or []
         source_id = str(params.get("source_id", "") or "").strip()
 
         if source_id:
             for source in findings:
                 if getattr(source, "source_id", "") == source_id:
                     return source
+            for item in ranked_sources:
+                source = getattr(item, "source", None)
+                if source is not None and getattr(source, "source_id", "") == source_id:
+                    return source
 
         for source in findings:
             if getattr(source, "abstract", None):
                 return source
 
+        for item in ranked_sources:
+            source = getattr(item, "source", None)
+            if source is not None and getattr(source, "abstract", None):
+                return source
+
         if findings:
             return findings[0]
+
+        for item in ranked_sources:
+            source = getattr(item, "source", None)
+            if source is not None:
+                return source
 
         return None
 
@@ -334,7 +414,6 @@ class ActPhase:
             return []
 
         cleaned: list[dict[str, Any]] = []
-
         for item in value:
             if not isinstance(item, dict):
                 continue
@@ -395,6 +474,37 @@ class ActPhase:
 
         return result
 
+    def _skipped_result(
+        self,
+        state: Any,
+        think_result: Any,
+        tool_name: str,
+        reason: str,
+    ) -> ActResult:
+        action_type = self._infer_action_type(tool_name)
+        action = AgentAction(
+            action_id=str(uuid4()),
+            step_index=getattr(state, "current_step_index", 0),
+            action_type=action_type,
+            description=think_result.reasoning,
+            tool_call=None,
+            reasoning=think_result.reasoning,
+            tokens_used=0,
+        )
+
+        add_action = getattr(state, "add_action", None)
+        if callable(add_action):
+            add_action(action)
+
+        return ActResult(
+            success=True,
+            tool_name=tool_name,
+            action_type=self._enum_value(action_type),
+            skipped=True,
+            skip_reason=reason,
+            data={"skipped": True, "reason": reason},
+        )
+
     def _infer_action_type(self, tool_name: str) -> AgentActionType:
         name = tool_name.lower()
 
@@ -404,7 +514,7 @@ class ActPhase:
         if name.startswith("search"):
             return AgentActionType.SEARCH
 
-        if name.startswith("read"):
+        if name.startswith("read") or name.startswith("extract"):
             return AgentActionType.READ
 
         if name in (

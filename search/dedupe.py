@@ -9,6 +9,14 @@ from utils.logger import get_logger
 from utils.text import normalize_title
 from utils.url import get_url_fingerprint
 
+try:
+    from rapidfuzz import fuzz as _RAPIDFUZZ
+
+    if not hasattr(_RAPIDFUZZ, "ratio"):
+        _RAPIDFUZZ = None
+except Exception:
+    _RAPIDFUZZ = None
+
 _ARXIV_URL_RE = re.compile(
     r"arxiv\.org/(?:abs|pdf)/([0-9]{4}\.[0-9]{4,5})(?:v[0-9]+)?",
     re.IGNORECASE,
@@ -30,9 +38,17 @@ class SourceDeduplicator:
         self,
         max_alternate_urls: int = 5,
         fuzzy_title_threshold: float = 0.85,
+        max_bucket_size: int = 50,
+        min_length_ratio: float = 0.55,
     ) -> None:
         self._max_alternate_urls = max(1, max_alternate_urls)
-        self._fuzzy_title_threshold = max(0.5, min(1.0, fuzzy_title_threshold))
+        self._fuzzy_title_threshold = max(
+            0.5, min(1.0, fuzzy_title_threshold)
+        )
+        self._max_bucket_size = max(5, int(max_bucket_size))
+        self._min_length_ratio = max(
+            0.1, min(1.0, float(min_length_ratio))
+        )
         self._logger = get_logger("search.dedupe")
 
     def deduplicate(self, sources: list[Source]) -> list[Source]:
@@ -98,36 +114,192 @@ class SourceDeduplicator:
             s for s in sources
             if self._enum_value(s.source_type) == SourceType.PAPER.value
         ]
-        non_papers = [
-            s for s in sources
-            if self._enum_value(s.source_type) != SourceType.PAPER.value
-        ]
 
         merged_ids: set[str] = set()
-        for i in range(len(papers)):
-            if papers[i].source_id in merged_ids:
+
+        buckets: dict[str, list[Source]] = {}
+        order: list[str] = []
+
+        for source in papers:
+            key = self._bucket_key(source.title)
+
+            if not key:
                 continue
-            for j in range(i + 1, len(papers)):
-                if papers[j].source_id in merged_ids:
-                    continue
-                similarity = self._title_similarity(
-                    papers[i].title, papers[j].title
-                )
-                if similarity >= self._fuzzy_title_threshold:
-                    loser = papers[j]
-                    if self._quality_score(papers[j]) > self._quality_score(papers[i]):
-                        loser = papers[i]
-                    merged_ids.add(loser.source_id)
-                    self._logger.info(
-                        f"Fuzzy title dedup merged '{loser.title[:60]}' "
-                        f"(similarity={similarity:.2f})"
-                    )
+
+            if key not in buckets:
+                buckets[key] = []
+                order.append(key)
+
+            buckets[key].append(source)
+
+        for key in order:
+            group = buckets[key]
+
+            if len(group) < 2:
+                continue
+
+            if len(group) > self._max_bucket_size:
+                group = sorted(
+                    group,
+                    key=self._quality_score,
+                    reverse=True,
+                )[: self._max_bucket_size]
+
+            self._compare_bucket(group, merged_ids)
+
+        self._compare_neighbor_buckets(buckets, order, merged_ids)
 
         result: list[Source] = []
+
         for source in sources:
             if source.source_id not in merged_ids:
                 result.append(source)
+
         return result
+
+    def _bucket_key(self, title: str) -> str:
+        normalized = normalize_title(title)
+
+        if not normalized:
+            return ""
+
+        stripped = normalized.replace(" ", "")
+        prefix = stripped[:3]
+
+        if len(prefix) < 3:
+            return ""
+
+        return prefix
+
+    def _compare_bucket(
+        self,
+        group: list[Source],
+        merged_ids: set[str],
+    ) -> None:
+        for i in range(len(group)):
+            primary = group[i]
+
+            if primary.source_id in merged_ids:
+                continue
+
+            for j in range(i + 1, len(group)):
+                other = group[j]
+
+                if other.source_id in merged_ids:
+                    continue
+
+                similarity = self._title_similarity_fast(
+                    primary.title, other.title
+                )
+
+                if similarity < self._fuzzy_title_threshold:
+                    continue
+
+                loser = other
+                winner = primary
+
+                if self._quality_score(other) > self._quality_score(primary):
+                    loser = primary
+                    winner = other
+
+                merged_ids.add(loser.source_id)
+
+                self._logger.info(
+                    f"Fuzzy title dedup merged '{loser.title[:60]}' "
+                    f"(similarity={similarity:.2f})"
+                )
+
+                if loser is primary:
+                    return
+
+                primary = winner
+
+    def _compare_neighbor_buckets(
+        self,
+        buckets: dict[str, list[Source]],
+        order: list[str],
+        merged_ids: set[str],
+    ) -> None:
+        for index in range(len(order)):
+            key = order[index]
+            first_chars = {key[:2]}
+
+            for other_index in (index - 1, index + 1):
+                if other_index < 0 or other_index >= len(order):
+                    continue
+
+                other_key = order[other_index]
+
+                if other_key[:2] not in first_chars:
+                    continue
+
+                left = buckets.get(key) or []
+                right = buckets.get(other_key) or []
+
+                if len(left) > self._max_bucket_size:
+                    left = left[: self._max_bucket_size]
+
+                if len(right) > self._max_bucket_size:
+                    right = right[: self._max_bucket_size]
+
+                for a in left:
+                    if a.source_id in merged_ids:
+                        continue
+
+                    for b in right:
+                        if b.source_id in merged_ids:
+                            continue
+
+                        similarity = self._title_similarity_fast(
+                            a.title, b.title
+                        )
+
+                        if similarity < self._fuzzy_title_threshold:
+                            continue
+
+                        loser = b
+
+                        if self._quality_score(b) > self._quality_score(a):
+                            loser = a
+
+                        merged_ids.add(loser.source_id)
+
+                        self._logger.info(
+                            f"Fuzzy title dedup merged "
+                            f"'{loser.title[:60]}' "
+                            f"(similarity={similarity:.2f})"
+                        )
+
+    def _title_similarity_fast(
+        self, title_a: str, title_b: str
+    ) -> float:
+        norm_a = normalize_title(title_a)
+        norm_b = normalize_title(title_b)
+
+        if not norm_a or not norm_b:
+            return 0.0
+
+        if norm_a == norm_b:
+            return 1.0
+
+        len_a = len(norm_a)
+        len_b = len(norm_b)
+
+        if len_a == 0 or len_b == 0:
+            return 0.0
+
+        length_ratio = min(len_a, len_b) / max(len_a, len_b)
+
+        if length_ratio < self._min_length_ratio:
+            return 0.0
+
+        if _RAPIDFUZZ is not None:
+            try:
+                return _RAPIDFUZZ.ratio(norm_a, norm_b) / 100.0
+            except Exception:
+                pass
+
+        return SequenceMatcher(None, norm_a, norm_b).ratio()
 
     def _title_similarity(self, title_a: str, title_b: str) -> float:
         norm_a = normalize_title(title_a)

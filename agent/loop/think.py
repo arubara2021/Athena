@@ -1,19 +1,102 @@
 from __future__ import annotations
 
-import json
 from typing import Any
 
 from pydantic import Field
 
 from core.models import AgentActionType, CoreModel
-from core.schemas import LLMMessageSchema, LLMRequestSchema
 from utils.logger import get_logger
 from utils.text import clean_text
 
-DEFAULT_THINK_TEMPERATURE = 0.0
-DEFAULT_THINK_MAX_TOKENS = 1500
+
 DEFAULT_ACTION_ADVANCE = "advance_step"
 DEFAULT_ACTION_COMPLETE = "complete_goal"
+
+TOOL_INTENT_MAP = {
+    "paper": "search_academic",
+    "research": "search_academic",
+    "study": "search_academic",
+    "journal": "search_academic",
+    "publication": "search_academic",
+    "book": "search_books",
+    "textbook": "search_books",
+    "textbooks": "search_books",
+    "course": "search_courses",
+    "courses": "search_courses",
+    "tutorial": "search_courses",
+    "tutorials": "search_courses",
+    "lecture": "search_courses",
+    "video": "search_courses",
+    "code": "search_code_models",
+    "code_models": "search_code_models",
+    "implementation": "search_code_models",
+    "model": "search_code_models",
+    "repository": "search_code_models",
+    "github": "search_code_models",
+    "dataset": "search_code_models",
+    "basic": "search_explanation",
+    "basics": "search_explanation",
+    "beginner": "search_explanation",
+    "introduction": "search_explanation",
+    "explanation": "search_explanation",
+    "what_is": "search_explanation",
+    "definition": "search_explanation",
+    "overview": "search_explanation",
+}
+
+INTENT_KEYWORDS = {
+    "paper": [
+        "paper",
+        "research",
+        "study",
+        "journal",
+        "publication",
+        "peer-reviewed",
+        "academic",
+    ],
+    "book": ["book", "textbook", "textbooks", "reading", "chapters"],
+    "course": [
+        "course",
+        "courses",
+        "tutorial",
+        "tutorials",
+        "lecture",
+        "video",
+        "class",
+        "lesson",
+    ],
+    "code": [
+        "code",
+        "implementation",
+        "repository",
+        "github",
+        "model",
+        "dataset",
+        "library",
+        "package",
+    ],
+    "basic": [
+        "basic",
+        "basics",
+        "beginner",
+        "introduction",
+        "what is",
+        "definition",
+        "overview",
+        "explained",
+        "explain",
+    ],
+}
+
+_ACTION_TOOL_MAP = {
+    AgentActionType.SEARCH: None,
+    AgentActionType.READ: "read_paper_abstract",
+    AgentActionType.ANALYZE: "rank_sources",
+    AgentActionType.GENERATE: "generate_learning_path",
+    AgentActionType.MEMORY_RECALL: "recall_memory",
+    AgentActionType.MEMORY_STORE: "save_to_memory",
+    AgentActionType.NO_OP: None,
+}
 
 
 class ThinkResult(CoreModel):
@@ -34,15 +117,54 @@ class ThinkPhase:
         max_tokens: int | None = None,
         model_limit: int = 2,
     ) -> None:
-        self._temperature = (
-            temperature if temperature is not None else DEFAULT_THINK_TEMPERATURE
-        )
-        self._max_tokens = max_tokens or DEFAULT_THINK_MAX_TOKENS
-        self._model_limit = max(1, model_limit)
+        self._temperature = 0.0 if temperature is None else float(temperature)
+        self._max_tokens = int(max_tokens or 0)
+        self._model_limit = max(1, int(model_limit))
         self._logger = get_logger("agent.loop.think")
 
-    async def think(self, state: Any, tools_summary: list[dict[str, Any]]) -> ThinkResult:
+    def select_search_tool(
+        self,
+        query: str,
+        level: str = "",
+        goal: str = "",
+    ) -> str:
+        combined = f"{query} {level} {goal}".lower()
+
+        if level and "beginner" in level.lower():
+            return "search_explanation"
+
+        scores: dict[str, int] = {
+            "search_academic": 0,
+            "search_books": 0,
+            "search_courses": 0,
+            "search_code_models": 0,
+            "search_explanation": 0,
+        }
+
+        for intent, keywords in INTENT_KEYWORDS.items():
+            tool = TOOL_INTENT_MAP.get(intent, "")
+
+            if not tool:
+                continue
+
+            for keyword in keywords:
+                if keyword in combined:
+                    scores[tool] += 1
+
+        best_tool = max(scores, key=lambda key: scores[key])
+
+        if scores[best_tool] == 0:
+            return "search_academic"
+
+        return best_tool
+
+    async def think(
+        self,
+        state: Any,
+        tools_summary: list[dict[str, Any]],
+    ) -> ThinkResult:
         current_step = getattr(state, "current_step", None)
+
         if current_step is None:
             return ThinkResult(
                 action=DEFAULT_ACTION_COMPLETE,
@@ -50,157 +172,303 @@ class ThinkPhase:
                 reasoning="No plan steps remaining",
             )
 
-        if state.is_budget_critical:
+        if getattr(state, "is_budget_critical", False):
             return ThinkResult(
                 action=DEFAULT_ACTION_COMPLETE,
                 is_complete=True,
-                reasoning="Budget is critically low, completing to preserve results",
+                reasoning="Budget critically low, completing to preserve results",
             )
 
-        if state.actions_in_current_step >= state.max_actions_per_step:
+        actions_in_step = int(
+            getattr(state, "actions_in_current_step", 0) or 0
+        )
+        max_actions = int(
+            getattr(state, "max_actions_per_step", 4) or 4
+        )
+
+        if actions_in_step >= max_actions:
             return ThinkResult(
                 action=DEFAULT_ACTION_ADVANCE,
                 is_advance=True,
-                reasoning="Maximum actions per step reached, advancing to next step",
+                reasoning="Maximum actions per step reached, advancing",
             )
 
-        llm_result = await self._llm_think(state, current_step, tools_summary)
-        if llm_result is not None:
-            return llm_result
+        return self._sanitize_tool_choice(
+            state,
+            self._deterministic_think(state, current_step, tools_summary),
+            tools_summary,
+        )
 
-        return self._heuristic_think(state, current_step, tools_summary)
-
-    async def _llm_think(
-        self,
-        state: Any,
-        current_step: Any,
-        tools_summary: list[dict[str, Any]],
-    ) -> ThinkResult | None:
-        try:
-            from llm.guardrails import validate_llm_request
-            from llm.parser import parse_json_object_response
-            from llm.provider import LLMProviderManager
-            from llm.router import get_fast_model_references
-
-            model_references = get_fast_model_references(limit=self._model_limit)
-            if not model_references:
-                return None
-
-            prompt = self._build_think_prompt(state, current_step, tools_summary)
-
-            async with LLMProviderManager() as manager:
-                for model_reference in model_references:
-                    try:
-                        request = LLMRequestSchema(
-                            provider=model_reference.provider,
-                            model=model_reference.model_id,
-                            messages=[
-                                LLMMessageSchema(
-                                    role="system",
-                                    content=self._system_prompt(),
-                                ),
-                                LLMMessageSchema(role="user", content=prompt),
-                            ],
-                            temperature=self._temperature,
-                            max_tokens=self._max_tokens,
-                            response_format="json_object",
-                        )
-                        request = validate_llm_request(request)
-                        response = await manager.complete(request)
-                        if response is None:
-                            continue
-
-                        tokens_used = response.tokens_used or 0
-                        state.consume_tokens(tokens_used)
-
-                        payload = parse_json_object_response(response.content)
-                        return self._parse_think_payload(payload)
-                    except Exception:
-                        continue
-            return None
-        except Exception as exc:
-            self._logger.warning(f"LLM think failed: {exc}")
-            return None
-
-    def _heuristic_think(
+    def _deterministic_think(
         self,
         state: Any,
         current_step: Any,
         tools_summary: list[dict[str, Any]],
     ) -> ThinkResult:
-        action_type = self._enum_value(
-            getattr(current_step, "action_type", AgentActionType.NO_OP)
-        )
-        tool_hint = clean_text(getattr(current_step, "tool_hint", ""))
-        step_description = clean_text(getattr(current_step, "description", ""))
-
-        selected_tool = self._select_tool_for_action(
-            action_type, tool_hint, tools_summary
+        step_action = getattr(
+            current_step,
+            "action_type",
+            AgentActionType.NO_OP,
         )
 
-        if selected_tool is None:
+        tool_hint = clean_text(
+            getattr(current_step, "tool_hint", "") or ""
+        )
+
+        if tool_hint:
+            return ThinkResult(
+                action=tool_hint,
+                tool_name=tool_hint,
+                parameters={},
+                reasoning=f"Tool hint from plan step: {tool_hint}",
+            )
+
+        if step_action == AgentActionType.SEARCH:
+            query = clean_text(
+                getattr(current_step, "description", "")
+            )
+            tool_name = self.select_search_tool(
+                query=query,
+                level=clean_text(getattr(state, "level", "")),
+                goal=clean_text(getattr(state, "goal", "")),
+            )
+            return ThinkResult(
+                action=tool_name,
+                tool_name=tool_name,
+                parameters={},
+                reasoning=f"Search step routed to {tool_name}",
+            )
+
+        tool_name = _ACTION_TOOL_MAP.get(step_action)
+
+        if tool_name is None:
             return ThinkResult(
                 action=DEFAULT_ACTION_ADVANCE,
                 is_advance=True,
-                reasoning=f"No suitable tool found for action type: {action_type}",
+                reasoning=f"No tool for action type {step_action}",
             )
 
-        parameters = self._build_heuristic_parameters(
-            selected_tool, step_description, state
-        )
-
         return ThinkResult(
-            action=selected_tool,
-            tool_name=selected_tool,
-            parameters=parameters,
-            reasoning=f"Heuristic selection: {selected_tool} for {action_type}",
-            llm_used=False,
+            action=tool_name,
+            tool_name=tool_name,
+            parameters={},
+            reasoning=f"Deterministic routing for {step_action}",
         )
 
-    def _select_tool_for_action(
+    def _sanitize_tool_choice(
         self,
-        action_type: str,
-        tool_hint: str,
+        state: Any,
+        result: ThinkResult,
         tools_summary: list[dict[str, Any]],
-    ) -> str | None:
-        if tool_hint:
-            for tool in tools_summary:
-                if tool.get("name") == tool_hint:
-                    return tool_hint
+    ) -> ThinkResult:
+        if result.is_advance or result.is_complete:
+            return result
 
-        action_tool_map = {
-            AgentActionType.SEARCH.value: [
-                "search_academic",
-                "search_web",
-                "search_github",
-                "search_wikipedia",
-            ],
-            AgentActionType.READ.value: ["read_url", "read_paper_abstract"],
-            AgentActionType.ANALYZE.value: [
-                "rank_sources",
-                "classify_difficulty",
-                "compare_sources",
-            ],
-            AgentActionType.GENERATE.value: [
-                "generate_learning_path",
-                "generate_report",
-                "summarize_source",
-            ],
-            AgentActionType.MEMORY_STORE.value: ["save_to_memory"],
-            AgentActionType.MEMORY_RECALL.value: ["recall_memory", "search_memory"],
+        available = {
+            str(tool.get("name", "")) for tool in tools_summary
         }
+        tool = clean_text(result.tool_name or result.action)
 
-        candidate_tools = action_tool_map.get(action_type, [])
-        available_names = {t.get("name") for t in tools_summary}
+        if not tool:
+            return ThinkResult(
+                action=DEFAULT_ACTION_ADVANCE,
+                is_advance=True,
+                reasoning="No tool selected",
+            )
 
-        for candidate in candidate_tools:
-            if candidate in available_names:
-                return candidate
+        if tool not in available:
+            if tool == "read_url" and "read_paper_abstract" in available:
+                tool = "read_paper_abstract"
+            elif (
+                tool == "compare_sources"
+                and "rank_sources" in available
+            ):
+                counts = self._source_counts(state)
 
-        if tools_summary:
-            return tools_summary[0].get("name")
+                if counts["source_count"] >= 1:
+                    tool = "rank_sources"
+                else:
+                    return ThinkResult(
+                        action=DEFAULT_ACTION_ADVANCE,
+                        is_advance=True,
+                        reasoning="Insufficient sources for comparison",
+                    )
+            else:
+                return ThinkResult(
+                    action=DEFAULT_ACTION_ADVANCE,
+                    is_advance=True,
+                    reasoning=f"Tool '{tool}' is not available",
+                )
 
-        return None
+        if not self._is_tool_viable(state, tool, available):
+            counts = self._source_counts(state)
+
+            if tool == "read_url" and counts["readable_count"] >= 1:
+                if "read_paper_abstract" in available:
+                    tool = "read_paper_abstract"
+                elif "extract_source_summary" in available:
+                    tool = "extract_source_summary"
+                else:
+                    return ThinkResult(
+                        action=DEFAULT_ACTION_ADVANCE,
+                        is_advance=True,
+                        reasoning="No URL available for read_url",
+                    )
+            else:
+                return ThinkResult(
+                    action=DEFAULT_ACTION_ADVANCE,
+                    is_advance=True,
+                    reasoning=(
+                        f"Tool '{tool}' skipped because required "
+                        f"inputs are unavailable"
+                    ),
+                )
+
+        parameters = (
+            result.parameters
+            if isinstance(result.parameters, dict)
+            else {}
+        )
+        step_description = clean_text(
+            getattr(
+                getattr(state, "current_step", None),
+                "description",
+                "",
+            )
+        )
+        generated = self._build_heuristic_parameters(
+            tool,
+            step_description or getattr(state, "goal", ""),
+            state,
+        )
+
+        for key, value in generated.items():
+            parameters.setdefault(key, value)
+
+        result.action = tool
+        result.tool_name = tool
+        result.parameters = parameters
+        result.reasoning = (
+            clean_text(result.reasoning) or f"Selected {tool}"
+        )
+        return result
+
+    def _is_tool_viable(
+        self,
+        state: Any,
+        tool_name: str,
+        available: set[str] | None = None,
+    ) -> bool:
+        if available is not None and tool_name not in available:
+            return False
+
+        counts = self._source_counts(state)
+
+        if tool_name == "compare_sources":
+            return counts["source_count"] >= 2
+
+        if tool_name in ("rank_sources", "classify_difficulty"):
+            return counts["source_count"] >= 1
+
+        if tool_name in (
+            "extract_source_summary",
+            "read_paper_abstract",
+            "summarize_source",
+            "check_relevance",
+        ):
+            return counts["readable_count"] >= 1
+
+        if tool_name == "read_url":
+            return counts["url_count"] >= 1
+
+        if tool_name in (
+            "generate_learning_path",
+            "generate_report",
+            "enhance_path",
+        ):
+            return counts["source_count"] >= 1
+
+        if tool_name.startswith("search"):
+            return True
+
+        if tool_name in (
+            "save_to_memory",
+            "recall_memory",
+            "search_memory",
+        ):
+            return True
+
+        return True
+
+    def _source_counts(self, state: Any) -> dict[str, int]:
+        findings = getattr(state, "findings", []) or []
+        ranked_sources = getattr(state, "ranked_sources", []) or []
+
+        seen: set[str] = set()
+        readable_count = 0
+        url_count = 0
+        unique_count = 0
+
+        for source in findings:
+            key = str(
+                getattr(source, "source_id", "")
+                or getattr(source, "title", "")
+            )
+
+            if key in seen:
+                continue
+
+            seen.add(key)
+            unique_count += 1
+
+            title = clean_text(getattr(source, "title", ""))
+            abstract = clean_text(getattr(source, "abstract", ""))
+            url = clean_text(getattr(source, "url", ""))
+
+            if title or abstract:
+                readable_count += 1
+
+            if url:
+                url_count += 1
+
+        for item in ranked_sources:
+            source = getattr(item, "source", None)
+
+            if source is None:
+                continue
+
+            key = str(
+                getattr(source, "source_id", "")
+                or getattr(source, "title", "")
+            )
+
+            if key in seen:
+                continue
+
+            seen.add(key)
+            unique_count += 1
+
+            title = clean_text(getattr(source, "title", ""))
+            abstract = clean_text(getattr(source, "abstract", ""))
+            url = clean_text(getattr(source, "url", ""))
+
+            if title or abstract:
+                readable_count += 1
+
+            if url:
+                url_count += 1
+
+        return {
+            "findings_count": len(findings),
+            "ranked_count": len(ranked_sources),
+            "source_count": max(
+                len(findings),
+                len(ranked_sources),
+                unique_count,
+            ),
+            "readable_count": readable_count,
+            "url_count": url_count,
+        }
 
     def _build_heuristic_parameters(
         self,
@@ -208,143 +476,242 @@ class ThinkPhase:
         step_description: str,
         state: Any,
     ) -> dict[str, Any]:
-        query = step_description or state.goal or state.topic
+        query = (
+            step_description
+            or getattr(state, "goal", "")
+            or getattr(state, "topic", "")
+        )
+        sources = self._sources_payload(state)
+        source = self._choose_source(state)
 
         if tool_name.startswith("search"):
-            return {"query": query, "max_results": 8}
+            return {
+                "query": query,
+                "max_results": 8,
+                "level": getattr(state, "level", "") or "",
+                "goal": getattr(state, "goal", "") or "",
+            }
 
         if tool_name == "rank_sources":
             return {
-                "sources_data": [
-                    {
-                        "source_id": s.source_id,
-                        "title": s.title,
-                        "url": s.url,
-                        "platform": self._enum_value(s.platform),
-                        "source_type": self._enum_value(s.source_type),
-                        "abstract": (s.abstract or "")[:500],
-                    }
-                    for s in state.findings[:20]
-                ],
-                "query": state.goal,
-                "level": state.level,
+                "sources_data": sources,
+                "query": query,
+                "level": getattr(state, "level", "") or "",
+                "goal": getattr(state, "goal", "") or "",
             }
+
+        if tool_name == "classify_difficulty":
+            return {"sources_data": sources}
+
+        if tool_name == "compare_sources":
+            return {"sources_data": sources, "query": query}
 
         if tool_name == "generate_learning_path":
             return {
-                "sources_data": [
-                    {
-                        "source_id": s.source.source_id,
-                        "title": s.source.title,
-                        "url": s.source.url,
-                        "platform": self._enum_value(s.source.platform),
-                        "source_type": self._enum_value(s.source.source_type),
-                        "difficulty": self._enum_value(s.source.difficulty)
-                        if s.source.difficulty
-                        else None,
-                        "rank": s.rank,
-                        "score": s.score,
-                    }
-                    for s in state.ranked_sources[:15]
-                ],
-                "query": state.goal,
-                "level": state.level,
+                "sources_data": sources,
+                "query": query,
+                "level": getattr(state, "level", "") or "",
+                "goal": getattr(state, "goal", "") or "",
             }
 
-        if tool_name == "read_url":
-            urls = [s.url for s in state.findings if s.url]
-            return {"url": urls[0] if urls else ""}
+        if tool_name == "generate_report":
+            return {"sources_data": sources, "query": query}
 
-        if tool_name in ("save_to_memory", "recall_memory", "search_memory"):
-            return {"query": state.goal, "key": state.topic}
+        if tool_name == "read_url":
+            return {"url": self._first_url(state)}
+
+        if tool_name == "read_paper_abstract":
+            if source is not None:
+                return {
+                    "title": getattr(source, "title", "") or "",
+                    "abstract": getattr(source, "abstract", "") or "",
+                    "url": getattr(source, "url", "") or "",
+                }
+
+            return {"title": "", "abstract": "", "url": ""}
+
+        if tool_name == "extract_source_summary":
+            if source is not None:
+                return {
+                    "title": getattr(source, "title", "") or "",
+                    "abstract": getattr(source, "abstract", "") or "",
+                    "source_type": self._enum_value(
+                        getattr(source, "source_type", "")
+                    )
+                    or "other",
+                    "platform": self._enum_value(
+                        getattr(source, "platform", "")
+                    )
+                    or "web",
+                }
+
+            return {
+                "title": "",
+                "abstract": "",
+                "source_type": "",
+                "platform": "",
+            }
+
+        if tool_name in ("summarize_source", "check_relevance"):
+            if source is not None:
+                return {
+                    "title": getattr(source, "title", "") or "",
+                    "abstract": getattr(source, "abstract", "") or "",
+                    "query": query,
+                }
+
+        if tool_name in ("save_to_memory", "recall_memory"):
+            return {
+                "key": getattr(state, "topic", "")
+                or getattr(state, "goal", "")
+                or "agent_memory",
+                "content": (
+                    f"Researched {getattr(state, 'goal', '')}. "
+                    f"Findings: {len(getattr(state, 'findings', []) or [])}."
+                ),
+                "memory_type": "episodic",
+            }
+
+        if tool_name == "search_memory":
+            return {"query": query}
 
         return {"query": query}
 
-    def _build_think_prompt(
-        self,
-        state: Any,
-        current_step: Any,
-        tools_summary: list[dict[str, Any]],
-    ) -> str:
-        step_index = state.current_step_index + 1
-        total_steps = state.total_steps
-        step_description = clean_text(getattr(current_step, "description", ""))
-        step_action = self._enum_value(
-            getattr(current_step, "action_type", AgentActionType.NO_OP)
-        )
-        tool_hint = clean_text(getattr(current_step, "tool_hint", ""))
-        tools_text = json.dumps(tools_summary, ensure_ascii=False, indent=2)
+    def _sources_payload(self, state: Any) -> list[dict[str, Any]]:
+        ranked_sources = getattr(state, "ranked_sources", []) or []
+        findings = getattr(state, "findings", []) or []
+        payload: list[dict[str, Any]] = []
 
-        recent_actions = state.actions_taken[-3:] if state.actions_taken else []
-        actions_text = "\n".join(
-            f"- Step {a.step_index + 1}: {a.action_type.value} via {a.tool_call.tool_name if a.tool_call else 'none'}"
-            for a in recent_actions
-        ) or "None yet"
+        if ranked_sources:
+            for item in ranked_sources[:20]:
+                source = getattr(item, "source", None)
 
-        return (
-            f"Goal: {state.goal}\n"
-            f"Level: {state.level}\n"
-            f"Current Step: {step_index} of {total_steps}\n"
-            f"Step Description: {step_description}\n"
-            f"Step Action Type: {step_action}\n"
-            f"Tool Hint: {tool_hint or 'none'}\n"
-            f"Findings So Far: {len(state.findings)} sources\n"
-            f"Ranked Sources: {len(state.ranked_sources)}\n"
-            f"Budget: {state.tokens_remaining} tokens remaining "
-            f"({state.budget_percent_used:.0f}% used)\n"
-            f"Recent Actions:\n{actions_text}\n"
-            f"Available Tools:\n{tools_text}\n"
-            f"Decide the next action for this step.\n"
-            f"If the step is already complete, use action '{DEFAULT_ACTION_ADVANCE}'.\n"
-            f"If all steps are complete, use action '{DEFAULT_ACTION_COMPLETE}'.\n"
-            f"Return JSON with:\n"
-            f'- "action": tool name or "{DEFAULT_ACTION_ADVANCE}" or "{DEFAULT_ACTION_COMPLETE}"\n'
-            f'- "parameters": object with tool parameters\n'
-            f'- "reasoning": brief explanation\n'
-            f"Return only valid JSON."
-        )
+                if source is None:
+                    continue
 
-    def _system_prompt(self) -> str:
-        return (
-            "You are an autonomous research agent decision engine. "
-            "You select the best tool to advance the current step of a research plan. "
-            "Be efficient with token usage. "
-            "Do not invent tools that are not listed. "
-            "Return only valid JSON."
-        )
+                payload.append(
+                    {
+                        "source_id": getattr(
+                            source, "source_id", ""
+                        )
+                        or "",
+                        "title": getattr(source, "title", "") or "",
+                        "url": getattr(source, "url", "") or "",
+                        "platform": self._enum_value(
+                            getattr(source, "platform", "")
+                        )
+                        or "web",
+                        "source_type": self._enum_value(
+                            getattr(source, "source_type", "")
+                        )
+                        or "other",
+                        "abstract": (
+                            getattr(source, "abstract", "") or ""
+                        )[:500],
+                        "year": getattr(source, "year", None),
+                        "citation_count": getattr(
+                            source, "citation_count", None
+                        ),
+                        "difficulty": self._enum_value(
+                            getattr(source, "difficulty", None)
+                        )
+                        or None,
+                        "rank": getattr(
+                            item, "rank", len(payload) + 1
+                        ),
+                        "score": getattr(item, "score", 0.5),
+                        "confidence": getattr(
+                            item, "confidence", 0.5
+                        ),
+                    }
+                )
 
-    def _parse_think_payload(self, payload: dict[str, Any]) -> ThinkResult:
-        action = clean_text(payload.get("action", ""))
-        parameters = payload.get("parameters", {})
-        reasoning = clean_text(payload.get("reasoning", ""))
+            return payload
 
-        if not isinstance(parameters, dict):
-            parameters = {}
-
-        if action == DEFAULT_ACTION_ADVANCE:
-            return ThinkResult(
-                action=action,
-                is_advance=True,
-                reasoning=reasoning,
-                llm_used=True,
+        for index, source in enumerate(findings[:20], start=1):
+            payload.append(
+                {
+                    "source_id": getattr(source, "source_id", "")
+                    or "",
+                    "title": getattr(source, "title", "") or "",
+                    "url": getattr(source, "url", "") or "",
+                    "platform": self._enum_value(
+                        getattr(source, "platform", "")
+                    )
+                    or "web",
+                    "source_type": self._enum_value(
+                        getattr(source, "source_type", "")
+                    )
+                    or "other",
+                    "abstract": (
+                        getattr(source, "abstract", "") or ""
+                    )[:500],
+                    "year": getattr(source, "year", None),
+                    "citation_count": getattr(
+                        source, "citation_count", None
+                    ),
+                    "difficulty": self._enum_value(
+                        getattr(source, "difficulty", None)
+                    )
+                    or None,
+                    "rank": index,
+                    "score": 0.5,
+                    "confidence": 0.5,
+                }
             )
 
-        if action == DEFAULT_ACTION_COMPLETE:
-            return ThinkResult(
-                action=action,
-                is_complete=True,
-                reasoning=reasoning,
-                llm_used=True,
-            )
+        return payload
 
-        return ThinkResult(
-            action=action,
-            tool_name=action,
-            parameters=parameters,
-            reasoning=reasoning,
-            llm_used=True,
-        )
+    def _choose_source(self, state: Any) -> Any:
+        findings = getattr(state, "findings", []) or []
+        ranked_sources = getattr(state, "ranked_sources", []) or []
+
+        for source in findings:
+            if getattr(source, "abstract", None):
+                return source
+
+        for item in ranked_sources:
+            source = getattr(item, "source", None)
+
+            if source is not None and getattr(
+                source, "abstract", None
+            ):
+                return source
+
+        if findings:
+            return findings[0]
+
+        for item in ranked_sources:
+            source = getattr(item, "source", None)
+
+            if source is not None:
+                return source
+
+        return None
+
+    def _first_url(self, state: Any) -> str:
+        findings = getattr(state, "findings", []) or []
+        ranked_sources = getattr(state, "ranked_sources", []) or []
+
+        for source in findings:
+            url = clean_text(getattr(source, "url", ""))
+
+            if url:
+                return url
+
+        for item in ranked_sources:
+            source = getattr(item, "source", None)
+
+            if source is None:
+                continue
+
+            url = clean_text(getattr(source, "url", ""))
+
+            if url:
+                return url
+
+        return ""
 
     @staticmethod
     def _enum_value(value: Any) -> str:
-        return str(getattr(value, "value", value))
+        return str(getattr(value, "value", value) or "")

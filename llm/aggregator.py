@@ -123,6 +123,26 @@ class ConsensusAggregator:
                 judge_used=False,
             )
 
+        if len(successful_votes) == 1:
+            single_vote = successful_votes[0]
+
+            if self._validate_final_output(
+                request.name, single_vote.output
+            ):
+                self._trace.emit(
+                    "consensus_single_vote_accepted",
+                    task_id=request.task_id,
+                    model_id=single_vote.model_id,
+                )
+                return ConsensusResult(
+                    final_output=single_vote.output,
+                    agreement_score=1.0,
+                    voting_mode=request.voting_mode,
+                    votes=internal_votes,
+                    reasoning="Single successful vote accepted",
+                    judge_used=False,
+                )
+
         judge_reference = request.judge_model
         if judge_reference is None:
             try:

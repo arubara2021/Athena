@@ -1,13 +1,9 @@
 from __future__ import annotations
-
 from typing import Any
-
 from pydantic import Field
-
 from core.models import CoreModel
 from utils.logger import get_logger
 from utils.text import clean_text
-
 
 DEFAULT_QUALITY_THRESHOLD = 0.6
 DEFAULT_MIN_FINDINGS_FOR_STEP_COMPLETE = 3
@@ -18,6 +14,7 @@ class ReflectResult(CoreModel):
     should_advance: bool = False
     should_complete: bool = False
     should_retry: bool = False
+    should_skip: bool = False
     quality_score: float = Field(default=0.0, ge=0.0, le=1.0)
     step_complete: bool = False
     reasoning: str = ""
@@ -69,22 +66,30 @@ class ReflectPhase:
                 reasoning="Step advancement requested",
             )
 
-        if not act_result.success and not act_result.skipped:
+        if getattr(act_result, "skipped", False) or getattr(observe_result, "soft_skip", False):
+            reason = clean_text(getattr(act_result, "skip_reason", "")) or "Tool action skipped"
+            return self._soft_advance(act_result, reason)
+
+        if not act_result.success:
+            error = clean_text(act_result.error or "")
+            if self._is_non_retryable_error(error):
+                return self._soft_advance(act_result, error or "Non-retryable tool failure")
+
             if state.actions_in_current_step < state.max_actions_per_step:
                 return ReflectResult(
                     should_retry=True,
                     step_complete=False,
                     quality_score=0.2,
-                    reasoning=f"Action failed: {act_result.error}. Retrying with different approach.",
+                    reasoning=f"Action failed: {error}. Retrying with different approach.",
                     suggestions=["Try a different tool or adjust parameters"],
                 )
-            else:
-                return ReflectResult(
-                    should_advance=True,
-                    step_complete=True,
-                    quality_score=0.3,
-                    reasoning="Action failed and max retries reached. Advancing to next step.",
-                )
+
+            return ReflectResult(
+                should_advance=True,
+                step_complete=True,
+                quality_score=0.3,
+                reasoning="Action failed and max retries reached. Advancing to next step.",
+            )
 
         current_step = state.current_step
         if current_step is None:
@@ -101,14 +106,28 @@ class ReflectPhase:
 
         if step_action == "search":
             return self._reflect_search_step(state, observe_result)
-        elif step_action == "analyze":
+
+        if step_action == "analyze":
             return self._reflect_analyze_step(state, observe_result)
-        elif step_action == "generate":
+
+        if step_action == "generate":
             return self._reflect_generate_step(state, observe_result)
-        elif step_action == "read":
+
+        if step_action == "read":
             return self._reflect_read_step(state, observe_result)
-        else:
-            return self._reflect_generic_step(state, observe_result)
+
+        return self._reflect_generic_step(state, observe_result)
+
+    def _soft_advance(self, act_result: Any, reason: str) -> ReflectResult:
+        quality = 0.5 if getattr(act_result, "success", False) else 0.4
+        return ReflectResult(
+            should_advance=True,
+            should_skip=True,
+            step_complete=True,
+            quality_score=quality,
+            reasoning=f"Advancing without retry: {reason}",
+            suggestions=["Skip non-retryable tool action and continue the plan"],
+        )
 
     def _reflect_search_step(self, state: Any, observe_result: Any) -> ReflectResult:
         findings_count = len(state.findings)
@@ -140,12 +159,28 @@ class ReflectPhase:
     def _reflect_analyze_step(self, state: Any, observe_result: Any) -> ReflectResult:
         ranked_count = len(state.ranked_sources)
 
+        if getattr(observe_result, "comparison_completed", False):
+            return ReflectResult(
+                should_advance=True,
+                step_complete=True,
+                quality_score=0.75,
+                reasoning="Source comparison completed",
+            )
+
         if observe_result.ranked_updated and ranked_count >= self._min_ranked:
             return ReflectResult(
                 should_advance=True,
                 step_complete=True,
                 quality_score=min(1.0, ranked_count / 10),
                 reasoning=f"Analysis complete: {ranked_count} sources ranked",
+            )
+
+        if ranked_count >= self._min_ranked:
+            return ReflectResult(
+                should_advance=True,
+                step_complete=True,
+                quality_score=min(1.0, ranked_count / 10),
+                reasoning=f"Enough ranked sources already available: {ranked_count}",
             )
 
         if state.actions_in_current_step >= state.max_actions_per_step:
@@ -190,6 +225,14 @@ class ReflectPhase:
         )
 
     def _reflect_read_step(self, state: Any, observe_result: Any) -> ReflectResult:
+        if getattr(observe_result, "summary_updated", False):
+            return ReflectResult(
+                should_advance=True,
+                step_complete=True,
+                quality_score=0.8,
+                reasoning="Source summary extracted successfully",
+            )
+
         if observe_result.is_sufficient:
             return ReflectResult(
                 should_advance=True,
@@ -237,6 +280,30 @@ class ReflectPhase:
             quality_score=0.3,
             reasoning="Step not yet complete",
         )
+
+    def _is_non_retryable_error(self, error: str) -> bool:
+        text = clean_text(error).lower()
+        if not text:
+            return False
+
+        markers = (
+            "missing",
+            "required positional arguments",
+            "need at least 2 sources",
+            "no sources",
+            "no valid sources",
+            "no title",
+            "no abstract",
+            "no url",
+            "no readable source",
+            "not available",
+            "skipped",
+            "insufficient sources",
+            "empty url",
+            "no tool selected",
+        )
+
+        return any(marker in text for marker in markers)
 
     @staticmethod
     def _enum_value(value: Any) -> str:
